@@ -506,11 +506,498 @@ body.drawer-open {
   color: #5d1780;
   margin-bottom: 20px;
 }
-@media (max-width: 760px) {
-  .calendar-months { grid-template-columns: repeat(3, 1fr); }
-  .search-section { flex-wrap: wrap; }
-  .search-section input { width: 100%; }
+/* ========== 平板設備 (768px 以下) ========== */
+@media (max-width: 768px) {
+  .app-container {
+    max-width: 100%;
+    padding: 12px;
+  }
+  
+  .top-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    padding-bottom: 10px;
+  }
+  
+  .avatar {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .avatar-wrap {
+    margin-right: 0;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.5rem;
+  }
+  
+  .title-wrap p {
+    font-size: 0.85rem;
+  }
+  
+  .top-bar-actions {
+    gap: 8px;
+  }
+  
+  .search-section {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .search-section input {
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px; /* 防止 iOS 自動放大 */
+  }
+  
+  .month-filter {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .month-filter label,
+  .month-filter input,
+  .month-filter button {
+    font-size: 0.9rem;
+  }
+  
+  .event-card {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .event-date {
+    width: 100%;
+    min-width: 100%;
+    margin-top: 0;
+    padding: 8px 10px 6px;
+  }
+  
+  .event-card h3 {
+    font-size: 1rem;
+  }
+  
+  .event-card p {
+    font-size: 0.9rem;
+  }
+  
+  .calendar-grid {
+    gap: 4px;
+  }
+  
+  .calendar-cell {
+    min-height: 60px;
+    padding: 4px;
+    font-size: 0.75rem;
+  }
+  
+  .calendar-day-cell {
+    height: 80px;
+  }
+  
+  .calendar-empty-cell {
+    height: 80px;
+  }
+  
+  .calendar-event-item {
+    font-size: 0.7rem;
+    padding: 1px 3px;
+  }
+  
+  .calendar-header #currentMonthLabel {
+    font-size: 1.5rem;
+  }
+  
   .admin-panel {
     width: min(320px, 94vw);
+  }
+  
+  .admin-toggle {
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    bottom: 15px;
+    right: 15px;
+  }
+  
+  .bgm-control {
+    left: 15px;
+    bottom: 15px;
+  }
+  
+  .bgm-btn {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+}
+
+/* ========== 小型手機 (480px 以下) ========== */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 8px;
+  }
+  
+  .top-bar {
+    gap: 8px;
+  }
+  
+  .avatar {
+    width: 80px;
+    height: 80px;
+    border: 1.5px solid #dab4e3;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  
+  .title-wrap p {
+    font-size: 0.75rem;
+    display: none; /* 小屏幕隱藏副標題 */
+  }
+  
+  .top-bar-actions {
+    gap: 6px;
+  }
+  
+  .lang-switcher {
+    padding: 2px;
+  }
+  
+  .lang-btn {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+  }
+  
+  .calendar-btn {
+    padding: 6px 10px;
+    font-size: 1rem;
+  }
+  
+  .search-section {
+    margin: 10px 0;
+  }
+  
+  .search-section input {
+    font-size: 16px;
+    padding: 10px;
+  }
+  
+  .search-section button {
+    font-size: 0.9rem;
+    padding: 10px;
+    flex: 0 1 auto;
+  }
+  
+  .month-filter {
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  
+  .month-filter label {
+    font-size: 0.85rem;
+    width: 100%;
+  }
+  
+  .month-filter input {
+    width: 100%;
+    font-size: 14px;
+  }
+  
+  .month-filter button {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+  
+  .event-card {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .event-date {
+    padding: 6px 8px;
+    min-height: auto;
+  }
+  
+  .event-date-month {
+    font-size: 0.8rem;
+  }
+  
+  .event-date-day {
+    font-size: 1.2rem;
+  }
+  
+  .event-card h3 {
+    font-size: 0.95rem;
+    margin: 0 0 4px;
+  }
+  
+  .event-card p {
+    font-size: 0.85rem;
+    margin: 2px 0;
+  }
+  
+  .event-keyword {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .calendar-grid {
+    gap: 2px;
+  }
+  
+  .calendar-cell {
+    min-height: 50px;
+    padding: 3px;
+    font-size: 0.7rem;
+  }
+  
+  .calendar-day-cell {
+    height: 65px;
+  }
+  
+  .calendar-empty-cell {
+    height: 65px;
+  }
+  
+  .calendar-day-number {
+    font-size: 0.65rem;
+    margin-bottom: 2px;
+  }
+  
+  .calendar-event-item {
+    font-size: 0.65rem;
+    padding: 1px 2px;
+    margin-top: 1px;
+  }
+  
+  .calendar-header {
+    margin-bottom: 8px;
+    gap: 6px;
+  }
+  
+  .calendar-header #currentMonthLabel {
+    font-size: 1.2rem;
+  }
+  
+  .month-nav {
+    padding: 4px 8px;
+    font-size: 0.9rem;
+  }
+  
+  .result-list li {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+  }
+  
+  .admin-panel {
+    width: min(85vw, 300px);
+  }
+  
+  .admin-panel-header h2 {
+    font-size: 1rem;
+  }
+  
+  .admin-close-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.9rem;
+  }
+  
+  .admin-event-row {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  
+  .admin-edit-btn,
+  .admin-delete-btn {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+  
+  .admin-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    bottom: 12px;
+    right: 12px;
+  }
+  
+  .bgm-control {
+    left: 12px;
+    bottom: 12px;
+  }
+  
+  .bgm-btn {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+  
+  .calendar-page {
+    padding: 12px;
+  }
+  
+  .calendar-page h1 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+}
+
+/* ========== 超小型手機 (360px 以下) ========== */
+@media (max-width: 360px) {
+  .app-container {
+    padding: 6px;
+  }
+  
+  .avatar {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.1rem;
+  }
+  
+  .lang-btn {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+  
+  .calendar-btn {
+    font-size: 0.9rem;
+  }
+  
+  .search-section input,
+  .month-filter input {
+    font-size: 15px;
+  }
+  
+  .event-card {
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+  
+  .event-date-day {
+    font-size: 1.1rem;
+  }
+  
+  .event-card h3 {
+    font-size: 0.9rem;
+  }
+  
+  .event-card p {
+    font-size: 0.8rem;
+  }
+  
+  .calendar-cell {
+    min-height: 45px;
+  }
+}
+
+/* ========== 觸摸友好的按鈕尺寸 ========== */
+/* 所有平台確保按鈕最小44x44px（iOS推薦尺寸） */
+@media (max-width: 768px) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .month-nav {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .search-section button,
+  .month-filter button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+  
+  .lang-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .calendar-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ========== 響應式輸入框優化 ========== */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="month"],
+  input[type="date"],
+  input[type="number"] {
+    min-height: 44px;
+    font-size: 16px; /* iOS 防止自動放大 */
+    padding: 12px;
+    border-radius: 8px;
+  }
+}
+
+/* ========== 防止 iOS 默認放大 ========== */
+@media (max-width: 480px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ========== 橫屏模式優化 (landscape) ========== */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-container {
+    padding: 8px;
+  }
+  
+  .top-bar {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .avatar {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.1rem;
+  }
+  
+  .title-wrap p {
+    display: none;
+  }
+  
+  .search-section {
+    margin: 6px 0;
+  }
+  
+  .calendar-grid {
+    gap: 2px;
+  }
+  
+  .calendar-cell {
+    min-height: 40px;
+    padding: 2px;
+    font-size: 0.65rem;
+  }
+  
+  .event-card {
+    padding: 8px;
+    gap: 6px;
   }
 }
