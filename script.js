@@ -353,7 +353,17 @@ async function initCloudSync() {
 
 let currentCalendarYear = new Date().getFullYear();
 let currentCalendarMonth = new Date().getMonth();
-let isAdminAuthenticated = false;
+let isAdminVerified = false;
+
+function requestAdminAccess() {
+  const answer = window.prompt(t('adminGateQuestion'));
+  if (answer === null) return false;
+  const normalized = answer.trim().toLowerCase().replace(/\s+/g, '');
+  return normalized === '牛肉'
+    || normalized === '牛奶'
+    || normalized === '牛肉同牛奶'
+    || normalized === '牛奶同牛肉';
+}
 
 const adminPanel = document.getElementById('adminPanel');
 const adminToggle = document.getElementById('adminToggle');
@@ -374,11 +384,6 @@ const searchResults = document.getElementById('searchResults');
 const resultItems = document.getElementById('resultItems');
 const resultList = document.getElementById('searchResults');
 const adminForm = document.getElementById('adminForm');
-const adminEmail = document.getElementById('adminEmail');
-const adminPassword = document.getElementById('adminPassword');
-const adminLoginBtn = document.getElementById('adminLoginBtn');
-const adminLogoutBtn = document.getElementById('adminLogoutBtn');
-const adminAuthStatus = document.getElementById('adminAuthStatus');
 
 let isBgmPlaying = false;
 let hasPendingAutoplay = false;
@@ -433,84 +438,7 @@ function initBackgroundMusic() {
 }
 
 function canEditAdminData() {
-  return isAdminAuthenticated;
-}
-
-function setAdminControlsLocked(locked) {
-  if (!adminForm) return;
-  const controls = adminForm.querySelectorAll('input, button, textarea, select');
-  controls.forEach((el) => {
-    if (el.id === 'adminLoginBtn' || el.id === 'adminLogoutBtn' || el.id === 'adminEmail' || el.id === 'adminPassword') return;
-    el.disabled = locked;
-  });
-
-  if (adminLoginBtn) adminLoginBtn.disabled = !locked;
-  if (adminLogoutBtn) adminLogoutBtn.disabled = locked;
-}
-
-function setAdminAuthStatusText(text) {
-  if (!adminAuthStatus) return;
-  adminAuthStatus.textContent = text;
-}
-
-function hasAuthSdk() {
-  return hasCloudSdk() && typeof window.firebase.auth === 'function';
-}
-
-function hasAuthConfig() {
-  const config = window.BONNIE_FIREBASE_CONFIG;
-  if (!config || typeof config !== 'object') return false;
-  return ['apiKey', 'authDomain', 'projectId'].every((key) => typeof config[key] === 'string' && config[key].trim());
-}
-
-function initAdminAuth() {
-  setAdminControlsLocked(true);
-
-  if (!hasAuthSdk() || !hasAuthConfig()) {
-    setAdminAuthStatusText('管理員登入未啟用（請先填寫 Firebase Auth 設定）');
-    return;
-  }
-
-  const auth = window.firebase.auth();
-
-  auth.onAuthStateChanged((user) => {
-    isAdminAuthenticated = Boolean(user);
-    if (user) {
-      setAdminAuthStatusText(`已登入：${user.email || '管理員'}`);
-    } else {
-      setAdminAuthStatusText('未登入（登入後可新增、編輯、刪除）');
-    }
-    setAdminControlsLocked(!isAdminAuthenticated);
-    renderAdminEventList();
-  });
-
-  if (adminLoginBtn) {
-    adminLoginBtn.addEventListener('click', async () => {
-      const email = (adminEmail?.value || '').trim();
-      const password = adminPassword?.value || '';
-      if (!email || !password) {
-        alert('請輸入管理員 Email 與密碼。');
-        return;
-      }
-
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        if (adminPassword) adminPassword.value = '';
-      } catch (error) {
-        alert(`登入失敗：${error?.message || '請檢查帳號密碼'}`);
-      }
-    });
-  }
-
-  if (adminLogoutBtn) {
-    adminLogoutBtn.addEventListener('click', async () => {
-      try {
-        await auth.signOut();
-      } catch (error) {
-        alert(`登出失敗：${error?.message || '請稍後再試'}`);
-      }
-    });
-  }
+  return isAdminVerified;
 }
 
 function formatStart(ts) {
@@ -934,6 +862,14 @@ function closeAdminDrawer() {
 
 adminToggle.addEventListener('click', () => {
   const isOpening = !adminPanel.classList.contains('open');
+  if (isOpening && !isAdminVerified) {
+    const verified = requestAdminAccess();
+    if (!verified) {
+      alert(t('adminGateDenied'));
+      return;
+    }
+    isAdminVerified = true;
+  }
   if (isOpening) openAdminDrawer();
   else closeAdminDrawer();
 });
@@ -1029,7 +965,7 @@ function isValidImportedEvent(ev) {
 
 function importEventsData() {
   if (!canEditAdminData()) {
-    alert('請先以管理員登入，再匯入資料。');
+    alert('請先通過管理員問題驗證，再匯入資料。');
     return;
   }
 
@@ -1074,7 +1010,7 @@ function importEventsData() {
 
 function startEditEvent(id) {
   if (!canEditAdminData()) {
-    alert('請先以管理員登入，再編輯活動。');
+    alert('請先通過管理員問題驗證，再編輯活動。');
     return;
   }
 
@@ -1100,7 +1036,7 @@ function cancelEditEvent() {
 
 function deleteEvent(id) {
   if (!canEditAdminData()) {
-    alert('請先以管理員登入，再刪除活動。');
+    alert('請先通過管理員問題驗證，再刪除活動。');
     return;
   }
 
@@ -1129,7 +1065,7 @@ if (importEventsBtn) {
 adminForm.addEventListener('submit', (e) => {
   e.preventDefault();
   if (!canEditAdminData()) {
-    alert('請先以管理員登入，再新增或更新活動。');
+    alert('請先通過管理員問題驗證，再新增或更新活動。');
     return;
   }
 
@@ -1182,4 +1118,3 @@ buildCalendar();
 initBackgroundMusic();
 applyLang();
 initCloudSync();
-initAdminAuth();

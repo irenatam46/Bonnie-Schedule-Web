@@ -446,20 +446,6 @@ body.drawer-open {
   display: grid;
   gap: 10px;
 }
-.admin-auth-box {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 10px;
-  border: 1px solid #dbbdde;
-  border-radius: 10px;
-  background: #fff8ff;
-}
-.admin-auth-status {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #5a1675;
-}
 .admin-edit-btn:disabled,
 .admin-delete-btn:disabled,
 #adminSubmitBtn:disabled,
