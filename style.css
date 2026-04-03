@@ -138,7 +138,8 @@ body {
 .event-card.is-expired,
 .result-list li.is-expired,
 .calendar-event-item.is-expired {
-  opacity: 0.55;
+  opacity: 0.75;
+  filter: saturate(0.6);
 }
 .event-date {
   position: relative;

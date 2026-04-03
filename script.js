@@ -155,6 +155,14 @@ function applyLang() {
 
 const DEFAULT_EVENTS = [
   {
+    id: 0,
+    name: 'Bonnie 生日會 (已結束)',
+    location: 'Bangkok Central',
+    start: '2026-02-14T17:00',
+    keyword: '#BonnieBirthday',
+    coArtists: '',
+  },
+  {
     id: 1,
     name: 'GMMTV FANIVAL 2026',
     location: 'CENTRALWORLD PULSE 7th FLOOR',
@@ -221,6 +229,19 @@ const adminBackdrop = document.getElementById('adminBackdrop');
 const adminCloseBtn = document.getElementById('adminCloseBtn');
 const bgmToggle = document.getElementById('bgmToggle');
 const bgmAudio = document.getElementById('bgmAudio');
+
+// 頁面主要元素
+const calendarToggle = document.getElementById('calendarToggle');
+const calendarPanel = document.getElementById('calendarPanel');
+const monthPicker = document.getElementById('monthPicker');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const clearMonth = document.getElementById('clearMonth');
+const eventList = document.getElementById('eventList');
+const searchResults = document.getElementById('searchResults');
+const resultItems = document.getElementById('resultItems');
+const resultList = document.getElementById('searchResults');
+const adminForm = document.getElementById('adminForm');
 
 let isBgmPlaying = false;
 let hasPendingAutoplay = false;
@@ -381,7 +402,12 @@ function getEventSearchScore(keyword, event) {
 }
 
 function isEventExpired(startTime) {
-  return new Date(startTime).getTime() < Date.now();
+  // 將開始時間和當前時間都轉換為相同格式進行比較
+  const eventDate = new Date(startTime);
+  const now = new Date();
+  
+  // 使用毫秒級別比較，確保跨設備一致
+  return eventDate.getTime() < now.getTime();
 }
 
 function buildEventCard(event) {
@@ -817,6 +843,9 @@ adminForm.addEventListener('submit', (e) => {
     eventData.push({ id: Date.now(), name, location, start, keyword, coArtists });
     adminForm.reset();
     alert(t('adminAdded'));
+    // 新增活動後自動跳轉到該活動所在的月份
+    const newEventMonth = getYearMonthValueFromStart(start);
+    monthPicker.value = newEventMonth;
   }
 
   saveEventData();
