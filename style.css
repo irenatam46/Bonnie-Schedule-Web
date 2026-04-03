@@ -86,6 +86,40 @@ body {
   gap: 8px;
   margin: 14px 0;
 }
+.sync-status {
+  margin: 0 auto 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  width: fit-content;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.sync-status.local {
+  color: #6e4b0d;
+  background: #fff4cf;
+  border-color: #f2d577;
+}
+.sync-status.syncing {
+  color: #0c4b72;
+  background: #dff4ff;
+  border-color: #7ec9f0;
+}
+.sync-status.ok {
+  color: #0f5f3f;
+  background: #dff8eb;
+  border-color: #82d8ae;
+}
+.sync-status.offline {
+  color: #5b3d75;
+  background: #f0e6ff;
+  border-color: #c9a8f3;
+}
+.sync-status.error {
+  color: #7a1920;
+  background: #ffe8ea;
+  border-color: #f3a8b1;
+}
 .search-section input,
 .month-filter input,
 .admin-panel input,
@@ -411,6 +445,45 @@ body.drawer-open {
 .admin-panel form {
   display: grid;
   gap: 10px;
+}
+.admin-auth-box {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #dbbdde;
+  border-radius: 10px;
+  background: #fff8ff;
+}
+.admin-auth-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #5a1675;
+}
+.admin-edit-btn:disabled,
+.admin-delete-btn:disabled,
+#adminSubmitBtn:disabled,
+#adminCancelBtn:disabled,
+#importEventsBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.admin-sync-tools {
+  display: grid;
+  gap: 8px;
+}
+.admin-sync-tools textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  padding: 10px;
+  border: 1px solid #dcb5dc;
+  border-radius: 8px;
+  outline: none;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: #4a154b;
+  background: #fff;
 }
 .admin-panel h2 { margin-top:0; }
 .admin-event-row {

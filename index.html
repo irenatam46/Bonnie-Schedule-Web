@@ -26,6 +26,8 @@
       </div>
     </header>
 
+    <div id="syncStatus" class="sync-status local">本機模式（未設定雲端）</div>
+
     <section class="search-section">
       <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋活動名，例如：GMMTV FANIVAL" />
       <button id="searchBtn" data-i18n="search">搜尋</button>
@@ -60,6 +62,15 @@
         <h2 data-i18n="adminTitle">後台管理活動區</h2>
         <button type="button" id="adminCloseBtn" class="admin-close-btn" aria-label="關閉後台">✕</button>
       </div>
+      <div class="admin-auth-box">
+        <p id="adminAuthStatus" class="admin-auth-status">未登入（登入後可新增、編輯、刪除）</p>
+        <input id="adminEmail" type="email" placeholder="管理員 Email" autocomplete="username" />
+        <input id="adminPassword" type="password" placeholder="管理員密碼" autocomplete="current-password" />
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="adminLoginBtn">管理員登入</button>
+          <button type="button" id="adminLogoutBtn" disabled>登出</button>
+        </div>
+      </div>
       <form id="adminForm">
         <input id="newName" type="text" data-i18n-placeholder="fieldName" placeholder="活動名稱" required />
         <input id="newLocation" type="text" data-i18n-placeholder="fieldLocation" placeholder="地點" required />
@@ -74,6 +85,13 @@
       <hr style="margin:14px 0;border-color:#e0c0e0;" />
       <h3 data-i18n="adminExisting" style="margin:0 0 10px;font-size:1rem;color:#5a1675;">現有活動</h3>
       <div id="adminEventList"></div>
+      <hr style="margin:14px 0;border-color:#e0c0e0;" />
+      <h3 style="margin:0 0 10px;font-size:1rem;color:#5a1675;">跨裝置同步</h3>
+      <div class="admin-sync-tools">
+        <button type="button" id="exportEventsBtn">匯出活動資料</button>
+        <button type="button" id="importEventsBtn">匯入活動資料</button>
+        <textarea id="syncPayload" rows="6" placeholder="把匯出的 JSON 貼到這裡，再按『匯入活動資料』"></textarea>
+      </div>
     </section>
 
     <button id="adminToggle" class="admin-toggle" title="🔧">🔧</button>
@@ -87,6 +105,22 @@
     <source src="Love%20Language-Piano%20Cover.mp3" type="audio/mpeg" />
   </audio>
 
+  <script>
+    // 填入你的 Firebase 專案設定後，會自動啟用跨裝置即時同步。
+    window.BONNIE_FIREBASE_CONFIG = {
+      apiKey: '',
+      authDomain: '',
+      databaseURL: '',
+      projectId: '',
+      storageBucket: '',
+      messagingSenderId: '',
+      appId: '',
+    };
+    window.BONNIE_FIREBASE_DB_PATH = 'bonnieSchedule/events';
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

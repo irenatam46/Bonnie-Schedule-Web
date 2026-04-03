@@ -208,20 +208,152 @@ function saveEventData() {
   try {
     localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
   } catch {}
+  void pushEventDataToCloud();
 }
 
 const eventData = loadEventData();
+let cloudSyncReady = false;
+let isApplyingCloudSnapshot = false;
+
+function setSyncStatus(state, text) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.className = `sync-status ${state}`;
+  el.textContent = text;
+}
+
+function getSyncTimeLabel() {
+  return new Date().toLocaleTimeString('zh-Hant', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function hasCloudSdk() {
+  return typeof window.firebase !== 'undefined';
+}
+
+function hasCloudConfig() {
+  const config = window.BONNIE_FIREBASE_CONFIG;
+  if (!config || typeof config !== 'object') return false;
+  return ['apiKey', 'authDomain', 'databaseURL', 'projectId'].every((key) => typeof config[key] === 'string' && config[key].trim());
+}
+
+function getCloudDataPath() {
+  const path = window.BONNIE_FIREBASE_DB_PATH;
+  if (typeof path === 'string' && path.trim()) return path.trim();
+  return 'bonnieSchedule/events';
+}
+
+function normalizeEventList(rawList) {
+  if (!Array.isArray(rawList)) return [];
+  return rawList
+    .filter((ev) => ev && typeof ev === 'object')
+    .filter((ev) => typeof ev.name === 'string' && typeof ev.location === 'string' && typeof ev.start === 'string')
+    .map((ev, index) => ({
+      id: Number.isFinite(Number(ev.id)) ? Number(ev.id) : Date.now() + index,
+      name: ev.name.trim(),
+      location: ev.location.trim(),
+      start: ev.start,
+      keyword: typeof ev.keyword === 'string' && ev.keyword.trim() ? ev.keyword.trim() : '未設定',
+      coArtists: typeof ev.coArtists === 'string' ? ev.coArtists.trim() : '',
+    }));
+}
+
+function refreshAllEventViews() {
+  if (monthPicker) {
+    if (!monthPicker.value) monthPicker.value = getCurrentYearMonthValue();
+    renderEvents(monthPicker.value);
+  }
+  if (typeof searchInput !== 'undefined' && searchInput) renderSearch(searchInput.value);
+  if (typeof renderAdminEventList === 'function') renderAdminEventList();
+  if (typeof renderMonthCalendar === 'function') renderMonthCalendar(currentCalendarYear, currentCalendarMonth);
+}
+
+async function pushEventDataToCloud() {
+  if (!cloudSyncReady || isApplyingCloudSnapshot) return;
+  try {
+    setSyncStatus('syncing', '同步中...');
+    const path = getCloudDataPath();
+    const db = window.firebase.database();
+    await db.ref(path).set(eventData);
+    setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
+  } catch (error) {
+    setSyncStatus('error', '同步失敗（已保留本機資料）');
+    console.warn('Cloud sync push failed:', error);
+  }
+}
+
+async function initCloudSync() {
+  if (!hasCloudSdk() || !hasCloudConfig()) {
+    setSyncStatus('local', '本機模式（未設定雲端）');
+    console.info('Cloud sync disabled: missing Firebase SDK or config.');
+    return;
+  }
+
+  try {
+    setSyncStatus('syncing', '雲端連線中...');
+
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(window.BONNIE_FIREBASE_CONFIG);
+    }
+
+    const path = getCloudDataPath();
+    const db = window.firebase.database();
+    const ref = db.ref(path);
+
+    const initialSnapshot = await ref.once('value');
+    const initialIncoming = normalizeEventList(initialSnapshot.val());
+
+    if (initialIncoming.length) {
+      isApplyingCloudSnapshot = true;
+      eventData.splice(0, eventData.length, ...initialIncoming);
+      try {
+        localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
+      } catch {}
+      refreshAllEventViews();
+      isApplyingCloudSnapshot = false;
+    } else if (eventData.length) {
+      await ref.set(eventData);
+    }
+
+    ref.on('value', (snapshot) => {
+      const incoming = normalizeEventList(snapshot.val());
+
+      if (!incoming.length) {
+        if (eventData.length) void pushEventDataToCloud();
+        return;
+      }
+
+      isApplyingCloudSnapshot = true;
+      eventData.splice(0, eventData.length, ...incoming);
+      try {
+        localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
+      } catch {}
+      refreshAllEventViews();
+      isApplyingCloudSnapshot = false;
+      setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
+    });
+
+    cloudSyncReady = true;
+
+    window.addEventListener('online', () => {
+      setSyncStatus('syncing', '網絡已恢復，同步中...');
+      void pushEventDataToCloud();
+    });
+
+    window.addEventListener('offline', () => {
+      setSyncStatus('offline', '離線模式（稍後自動同步）');
+    });
+
+    if (navigator.onLine) setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
+    else setSyncStatus('offline', '離線模式（稍後自動同步）');
+  } catch (error) {
+    setSyncStatus('error', '雲端連線失敗（本機模式）');
+    console.warn('Cloud sync init failed:', error);
+  }
+}
 
 let currentCalendarYear = new Date().getFullYear();
 let currentCalendarMonth = new Date().getMonth();
-let isAdminVerified = false;
-
-function requestAdminAccess() {
-  const answer = window.prompt(t('adminGateQuestion'));
-  if (answer === null) return false;
-  const normalized = answer.trim().toLowerCase();
-  return normalized === '牛肉' || normalized === '牛奶';
-}
+let isAdminAuthenticated = false;
 
 const adminPanel = document.getElementById('adminPanel');
 const adminToggle = document.getElementById('adminToggle');
@@ -242,6 +374,11 @@ const searchResults = document.getElementById('searchResults');
 const resultItems = document.getElementById('resultItems');
 const resultList = document.getElementById('searchResults');
 const adminForm = document.getElementById('adminForm');
+const adminEmail = document.getElementById('adminEmail');
+const adminPassword = document.getElementById('adminPassword');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+const adminAuthStatus = document.getElementById('adminAuthStatus');
 
 let isBgmPlaying = false;
 let hasPendingAutoplay = false;
@@ -293,6 +430,87 @@ function initBackgroundMusic() {
   });
 
   void setBackgroundMusicPlaying(true);
+}
+
+function canEditAdminData() {
+  return isAdminAuthenticated;
+}
+
+function setAdminControlsLocked(locked) {
+  if (!adminForm) return;
+  const controls = adminForm.querySelectorAll('input, button, textarea, select');
+  controls.forEach((el) => {
+    if (el.id === 'adminLoginBtn' || el.id === 'adminLogoutBtn' || el.id === 'adminEmail' || el.id === 'adminPassword') return;
+    el.disabled = locked;
+  });
+
+  if (adminLoginBtn) adminLoginBtn.disabled = !locked;
+  if (adminLogoutBtn) adminLogoutBtn.disabled = locked;
+}
+
+function setAdminAuthStatusText(text) {
+  if (!adminAuthStatus) return;
+  adminAuthStatus.textContent = text;
+}
+
+function hasAuthSdk() {
+  return hasCloudSdk() && typeof window.firebase.auth === 'function';
+}
+
+function hasAuthConfig() {
+  const config = window.BONNIE_FIREBASE_CONFIG;
+  if (!config || typeof config !== 'object') return false;
+  return ['apiKey', 'authDomain', 'projectId'].every((key) => typeof config[key] === 'string' && config[key].trim());
+}
+
+function initAdminAuth() {
+  setAdminControlsLocked(true);
+
+  if (!hasAuthSdk() || !hasAuthConfig()) {
+    setAdminAuthStatusText('管理員登入未啟用（請先填寫 Firebase Auth 設定）');
+    return;
+  }
+
+  const auth = window.firebase.auth();
+
+  auth.onAuthStateChanged((user) => {
+    isAdminAuthenticated = Boolean(user);
+    if (user) {
+      setAdminAuthStatusText(`已登入：${user.email || '管理員'}`);
+    } else {
+      setAdminAuthStatusText('未登入（登入後可新增、編輯、刪除）');
+    }
+    setAdminControlsLocked(!isAdminAuthenticated);
+    renderAdminEventList();
+  });
+
+  if (adminLoginBtn) {
+    adminLoginBtn.addEventListener('click', async () => {
+      const email = (adminEmail?.value || '').trim();
+      const password = adminPassword?.value || '';
+      if (!email || !password) {
+        alert('請輸入管理員 Email 與密碼。');
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        if (adminPassword) adminPassword.value = '';
+      } catch (error) {
+        alert(`登入失敗：${error?.message || '請檢查帳號密碼'}`);
+      }
+    });
+  }
+
+  if (adminLogoutBtn) {
+    adminLogoutBtn.addEventListener('click', async () => {
+      try {
+        await auth.signOut();
+      } catch (error) {
+        alert(`登出失敗：${error?.message || '請稍後再試'}`);
+      }
+    });
+  }
 }
 
 function formatStart(ts) {
@@ -716,16 +934,6 @@ function closeAdminDrawer() {
 
 adminToggle.addEventListener('click', () => {
   const isOpening = !adminPanel.classList.contains('open');
-
-  if (isOpening && !isAdminVerified) {
-    const verified = requestAdminAccess();
-    if (!verified) {
-      alert(t('adminGateDenied'));
-      return;
-    }
-    isAdminVerified = true;
-  }
-
   if (isOpening) openAdminDrawer();
   else closeAdminDrawer();
 });
@@ -748,6 +956,9 @@ let editingId = null;
 
 const adminSubmitBtn = document.getElementById('adminSubmitBtn');
 const adminCancelBtn = document.getElementById('adminCancelBtn');
+const exportEventsBtn = document.getElementById('exportEventsBtn');
+const importEventsBtn = document.getElementById('importEventsBtn');
+const syncPayload = document.getElementById('syncPayload');
 
 function renderAdminEventList() {
   const list = document.getElementById('adminEventList');
@@ -760,14 +971,15 @@ function renderAdminEventList() {
   }
 
   const sorted = [...eventData].sort((a, b) => new Date(a.start) - new Date(b.start));
+  const disabledAttr = canEditAdminData() ? '' : 'disabled';
   sorted.forEach((ev) => {
     const row = document.createElement('div');
     row.className = 'admin-event-row';
     row.innerHTML = `
       <span class="admin-event-name">${ev.name}<br><small>${ev.start.replace('T', ' ')}</small></span>
       <div class="admin-event-actions">
-        <button class="admin-edit-btn" data-id="${ev.id}">${t('adminEdit')}</button>
-        <button class="admin-delete-btn" data-id="${ev.id}">${t('adminDelete')}</button>
+        <button class="admin-edit-btn" data-id="${ev.id}" ${disabledAttr}>${t('adminEdit')}</button>
+        <button class="admin-delete-btn" data-id="${ev.id}" ${disabledAttr}>${t('adminDelete')}</button>
       </div>
     `;
     list.appendChild(row);
@@ -781,7 +993,91 @@ function renderAdminEventList() {
   });
 }
 
+async function copyTextToClipboard(text) {
+  if (!text) return false;
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function exportEventsData() {
+  const payload = JSON.stringify(eventData, null, 2);
+  if (syncPayload) syncPayload.value = payload;
+
+  void copyTextToClipboard(payload).then((copied) => {
+    if (copied) {
+      alert('活動資料已匯出，並已複製到剪貼簿。');
+    } else {
+      alert('活動資料已匯出到文字框，請手動複製。');
+    }
+  });
+}
+
+function isValidImportedEvent(ev) {
+  return ev
+    && typeof ev === 'object'
+    && typeof ev.name === 'string'
+    && typeof ev.location === 'string'
+    && typeof ev.start === 'string';
+}
+
+function importEventsData() {
+  if (!canEditAdminData()) {
+    alert('請先以管理員登入，再匯入資料。');
+    return;
+  }
+
+  if (!syncPayload) return;
+  const raw = syncPayload.value.trim();
+  if (!raw) {
+    alert('請先貼上要匯入的 JSON 資料。');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    alert('JSON 格式錯誤，請確認資料內容。');
+    return;
+  }
+
+  if (!Array.isArray(parsed)) {
+    alert('匯入失敗：資料必須是活動陣列。');
+    return;
+  }
+
+  const normalized = normalizeEventList(parsed);
+
+  if (!normalized.length) {
+    alert('匯入失敗：沒有有效活動資料。');
+    return;
+  }
+
+  eventData.splice(0, eventData.length, ...normalized);
+  saveEventData();
+
+  monthPicker.value = getCurrentYearMonthValue();
+  renderEvents(monthPicker.value);
+  renderSearch(searchInput.value);
+  renderMonthCalendar(currentCalendarYear, currentCalendarMonth);
+  renderAdminEventList();
+
+  alert(`匯入成功，共 ${normalized.length} 筆活動。`);
+}
+
 function startEditEvent(id) {
+  if (!canEditAdminData()) {
+    alert('請先以管理員登入，再編輯活動。');
+    return;
+  }
+
   const ev = eventData.find((e) => e.id === id);
   if (!ev) return;
   editingId = id;
@@ -803,6 +1099,11 @@ function cancelEditEvent() {
 }
 
 function deleteEvent(id) {
+  if (!canEditAdminData()) {
+    alert('請先以管理員登入，再刪除活動。');
+    return;
+  }
+
   const ev = eventData.find((e) => e.id === id);
   if (!ev) return;
   if (!confirm(t('adminConfirmDelete', ev.name))) return;
@@ -817,8 +1118,21 @@ function deleteEvent(id) {
 
 adminCancelBtn.addEventListener('click', cancelEditEvent);
 
+if (exportEventsBtn) {
+  exportEventsBtn.addEventListener('click', exportEventsData);
+}
+
+if (importEventsBtn) {
+  importEventsBtn.addEventListener('click', importEventsData);
+}
+
 adminForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  if (!canEditAdminData()) {
+    alert('請先以管理員登入，再新增或更新活動。');
+    return;
+  }
+
   const name = document.getElementById('newName').value.trim();
   const location = document.getElementById('newLocation').value.trim();
   const start = document.getElementById('newStart').value;
@@ -867,3 +1181,5 @@ renderEvents(monthPicker.value);
 buildCalendar();
 initBackgroundMusic();
 applyLang();
+initCloudSync();
+initAdminAuth();
