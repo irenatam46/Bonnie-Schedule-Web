@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bonnie Pattraphus Schedule</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header class="top-bar">
+      <div class="avatar-wrap">
+        <img src="avatar.jpg.jpg" alt="Bonnie" class="avatar" />
+      </div>
+      <div class="title-wrap">
+        <h1>Bonnie Pattraphus Schedule</h1>
+        <p data-i18n="subtitle">大家可輸入活動名稱搜尋、按月份檢視event</p>
+      </div>
+      <div class="top-bar-actions">
+        <div class="lang-switcher">
+          <button class="lang-btn active" data-lang="zh">繁中</button>
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="ja">日本語</button>
+        </div>
+        <button id="calendarToggle" class="calendar-btn" title="📅">📅</button>
+      </div>
+    </header>
+
+    <section class="search-section">
+      <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋活動名，例如：GMMTV FANIVAL" />
+      <button id="searchBtn" data-i18n="search">搜尋</button>
+    </section>
+
+    <section class="month-filter" id="monthFilterSection">
+      <label for="monthPicker" data-i18n="monthLabel">選擇月份查看活動：</label>
+      <input type="month" id="monthPicker" />
+      <button id="clearMonth" type="button" data-i18n="clear">清除</button>
+    </section>
+
+    <section class="calendar-panel" id="calendarPanel" hidden>
+      <div class="calendar-header">
+        <button id="prevMonth" class="month-nav">◀</button>
+        <span id="currentMonthLabel"></span>
+        <button id="nextMonth" class="month-nav">▶</button>
+      </div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </section>
+
+    <section class="event-list" id="eventList"></section>
+
+    <section class="result-list" id="searchResults" hidden>
+      <h2 data-i18n="searchResults">搜尋結果</h2>
+      <ul id="resultItems"></ul>
+    </section>
+
+    <div class="admin-backdrop" id="adminBackdrop" aria-hidden="true"></div>
+
+    <section class="admin-panel" id="adminPanel" aria-hidden="true">
+      <div class="admin-panel-header">
+        <h2 data-i18n="adminTitle">後台管理活動區</h2>
+        <button type="button" id="adminCloseBtn" class="admin-close-btn" aria-label="關閉後台">✕</button>
+      </div>
+      <form id="adminForm">
+        <input id="newName" type="text" data-i18n-placeholder="fieldName" placeholder="活動名稱" required />
+        <input id="newLocation" type="text" data-i18n-placeholder="fieldLocation" placeholder="地點" required />
+        <input id="newStart" type="datetime-local" required />
+        <input id="newCoArtists" type="text" data-i18n-placeholder="fieldCoArtists" placeholder="同場藝人（可不填）" />
+        <input id="newKeyword" type="text" placeholder="Keyword & Tag" />
+        <div style="display:flex;gap:8px;">
+          <button type="submit" id="adminSubmitBtn" data-i18n="adminAdd">新增活動</button>
+          <button type="button" id="adminCancelBtn" data-i18n="adminCancel" hidden>取消編輯</button>
+        </div>
+      </form>
+      <hr style="margin:14px 0;border-color:#e0c0e0;" />
+      <h3 data-i18n="adminExisting" style="margin:0 0 10px;font-size:1rem;color:#5a1675;">現有活動</h3>
+      <div id="adminEventList"></div>
+    </section>
+
+    <button id="adminToggle" class="admin-toggle" title="🔧">🔧</button>
+  </div>
+
+  <div class="bgm-control" aria-label="BGM">
+    <button id="bgmToggle" type="button" class="bgm-btn" data-i18n="bgmPlay">播放背景音樂</button>
+    <p class="bgm-hint" data-i18n="bgmHint">如果瀏覽器封鎖自動播放，按一下即可開始。</p>
+  </div>
+  <audio id="bgmAudio" class="bgm-player" loop preload="auto" autoplay playsinline aria-hidden="true">
+    <source src="Love%20Language-Piano%20Cover.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bonnie Pattraphus Calendar</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="calendar-page">
+    <h1>Bonnie Pattraphus 月曆</h1>
+    <div class="calendar-header">
+      <button id="prevMonth" class="month-nav">◀</button>
+      <span id="currentMonthLabel"></span>
+      <button id="nextMonth" class="month-nav">▶</button>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </div>
+  <script src="script.js"></script>
+  <script>
+    // 覆蓋 renderEvents 為空，因為新頁面只顯示月曆
+    function renderEvents() {}
+    function buildCalendar() {}
+    function renderSearch() {}
+    // 初始化月曆
+    renderMonthCalendar(currentCalendarYear, currentCalendarMonth);
+  </script>
+</body>
+</html>
