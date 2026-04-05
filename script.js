@@ -963,6 +963,64 @@ const adminCancelBtn = document.getElementById('adminCancelBtn');
 const exportEventsBtn = document.getElementById('exportEventsBtn');
 const importEventsBtn = document.getElementById('importEventsBtn');
 const syncPayload = document.getElementById('syncPayload');
+const syncApiBaseInput = document.getElementById('syncApiBaseInput');
+const syncDatasetInput = document.getElementById('syncDatasetInput');
+const saveSyncConfigBtn = document.getElementById('saveSyncConfigBtn');
+const clearSyncConfigBtn = document.getElementById('clearSyncConfigBtn');
+
+function getDefaultSyncApiBase() {
+  return 'http://localhost:4000';
+}
+
+function getDefaultSyncDataset() {
+  return 'bonnie-schedule-main';
+}
+
+function initSyncConfigPanel() {
+  if (syncApiBaseInput) {
+    syncApiBaseInput.value = String(window.BONNIE_SYNC_API_BASE || getDefaultSyncApiBase());
+  }
+  if (syncDatasetInput) {
+    syncDatasetInput.value = String(window.BONNIE_SYNC_DATASET || getDefaultSyncDataset());
+  }
+
+  if (saveSyncConfigBtn) {
+    saveSyncConfigBtn.addEventListener('click', () => {
+      const apiBase = (syncApiBaseInput ? syncApiBaseInput.value : '').trim();
+      const dataset = (syncDatasetInput ? syncDatasetInput.value : '').trim();
+
+      if (!apiBase) {
+        alert('請輸入同步 API 網址。');
+        return;
+      }
+
+      try {
+        const parsed = new URL(apiBase);
+        if (!/^https?:$/.test(parsed.protocol)) {
+          alert('同步 API 網址只支援 http 或 https。');
+          return;
+        }
+      } catch {
+        alert('同步 API 網址格式不正確。');
+        return;
+      }
+
+      localStorage.setItem('bonnieSyncApiBase', apiBase.replace(/\/+$/, ''));
+      localStorage.setItem('bonnieSyncDataset', dataset || getDefaultSyncDataset());
+      alert('同步設定已儲存，頁面將重新載入。');
+      window.location.reload();
+    });
+  }
+
+  if (clearSyncConfigBtn) {
+    clearSyncConfigBtn.addEventListener('click', () => {
+      localStorage.removeItem('bonnieSyncApiBase');
+      localStorage.removeItem('bonnieSyncDataset');
+      alert('已重設為預設同步設定，頁面將重新載入。');
+      window.location.reload();
+    });
+  }
+}
 
 function renderAdminEventList() {
   const list = document.getElementById('adminEventList');
@@ -1185,4 +1243,5 @@ renderEvents(monthPicker.value);
 buildCalendar();
 initBackgroundMusic();
 applyLang();
+initSyncConfigPanel();
 initCloudSync();

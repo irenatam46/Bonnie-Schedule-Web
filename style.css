@@ -143,6 +143,24 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+.sync-config-panel {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.sync-config-panel label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6b2a82;
+}
+.sync-config-panel input {
+  width: 100%;
+}
+.sync-config-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .month-filter {
   display: flex;
   justify-content: center;
