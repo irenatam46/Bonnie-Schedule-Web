@@ -26,7 +26,7 @@
       </div>
     </header>
 
-    <div id="syncStatus" class="sync-status local">本機模式（未設定同步 API）</div>
+    <div id="syncStatus" class="sync-status local">本機模式（未設定 Supabase）</div>
 
     <section class="search-section">
       <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋活動名，例如：GMMTV FANIVAL" />
@@ -80,8 +80,13 @@
       <h3 style="margin:0 0 10px;font-size:1rem;color:#5a1675;">跨裝置同步</h3>
       <div class="admin-sync-tools">
         <div class="sync-config-panel">
-          <label for="syncApiBaseInput">同步 API 網址</label>
-          <input id="syncApiBaseInput" type="url" placeholder="https://your-api.example.com" />
+          <div class="sync-provider-group">
+            <label for="supabaseUrlInput">Supabase Project URL</label>
+            <input id="supabaseUrlInput" type="url" placeholder="https://xxxx.supabase.co" />
+            <label for="supabaseKeyInput">Supabase Publishable Key</label>
+            <input id="supabaseKeyInput" type="text" placeholder="eyJ..." />
+          </div>
+
           <label for="syncDatasetInput">資料集名稱</label>
           <input id="syncDatasetInput" type="text" placeholder="bonnie-schedule-main" />
           <div class="sync-config-actions">
@@ -107,10 +112,12 @@
   </audio>
 
   <script>
-    // 將 API 指到同一個後端，網頁與手機版就會共享同一份資料。
-    window.BONNIE_SYNC_API_BASE = localStorage.getItem('bonnieSyncApiBase') || 'http://localhost:4000';
+    // Supabase 同步設定（可在後台面板修改）。
     window.BONNIE_SYNC_DATASET = localStorage.getItem('bonnieSyncDataset') || 'bonnie-schedule-main';
+    window.BONNIE_SUPABASE_URL = localStorage.getItem('bonnieSupabaseUrl') || '';
+    window.BONNIE_SUPABASE_ANON_KEY = localStorage.getItem('bonnieSupabaseAnonKey') || '';
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
 </html>

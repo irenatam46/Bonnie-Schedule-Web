@@ -215,12 +215,14 @@ function saveEventData() {
 const eventData = loadEventData();
 const LOCAL_UPDATED_AT_KEY = 'bonnieEventDataUpdatedAt';
 const SYNC_POLL_INTERVAL_MS = 30000;
+const SUPABASE_SYNC_TABLE = 'schedule_snapshots';
 
 let cloudSyncReady = false;
 let isApplyingCloudSnapshot = false;
 let syncPollTimer = null;
 let syncPushTimer = null;
 let localUpdatedAt = loadLocalUpdatedAt();
+let supabaseClient = null;
 
 function setSyncStatus(state, text) {
   const el = document.getElementById('syncStatus');
@@ -246,12 +248,10 @@ function markLocalUpdatedAt(ts = Date.now()) {
 }
 
 function hasCloudConfig() {
-  return typeof window.BONNIE_SYNC_API_BASE === 'string' && window.BONNIE_SYNC_API_BASE.trim().length > 0;
-}
-
-function getSyncApiBase() {
-  const base = String(window.BONNIE_SYNC_API_BASE || '').trim();
-  return base.replace(/\/+$/, '');
+  return typeof window.BONNIE_SUPABASE_URL === 'string'
+    && window.BONNIE_SUPABASE_URL.trim().length > 0
+    && typeof window.BONNIE_SUPABASE_ANON_KEY === 'string'
+    && window.BONNIE_SUPABASE_ANON_KEY.trim().length > 0;
 }
 
 function getCloudDataPath() {
@@ -260,8 +260,53 @@ function getCloudDataPath() {
   return 'bonnie-schedule-main';
 }
 
-function getSyncEndpoint() {
-  return `${getSyncApiBase()}/api/sync/${encodeURIComponent(getCloudDataPath())}`;
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') return null;
+  if (!hasCloudConfig()) return null;
+
+  supabaseClient = window.supabase.createClient(
+    String(window.BONNIE_SUPABASE_URL).trim(),
+    String(window.BONNIE_SUPABASE_ANON_KEY).trim(),
+  );
+  return supabaseClient;
+}
+
+async function readSnapshotFromSupabase() {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase client not ready.');
+
+  const { data, error } = await client
+    .from(SUPABASE_SYNC_TABLE)
+    .select('events, updated_at')
+    .eq('dataset_id', getCloudDataPath())
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!data) {
+    return { events: [], updatedAt: 0 };
+  }
+
+  return {
+    events: normalizeEventList(data.events),
+    updatedAt: Number(data.updated_at) || 0,
+  };
+}
+
+async function writeSnapshotToSupabase(updatedAt) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase client not ready.');
+
+  const { error } = await client
+    .from(SUPABASE_SYNC_TABLE)
+    .upsert({
+      dataset_id: getCloudDataPath(),
+      events: eventData,
+      updated_at: updatedAt,
+    }, { onConflict: 'dataset_id' });
+
+  if (error) throw error;
 }
 
 function normalizeEventList(rawList) {
@@ -302,13 +347,11 @@ function applyCloudSnapshot(incoming, incomingUpdatedAt = Date.now()) {
 
 async function pullEventDataFromCloud() {
   if (!cloudSyncReady && !hasCloudConfig()) return;
-  try {
-    const response = await fetch(getSyncEndpoint(), { method: 'GET' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const payload = await response.json();
-    const incoming = normalizeEventList(payload.events);
-    const incomingUpdatedAt = Number(payload.updatedAt) || 0;
+  try {
+    const snapshot = await readSnapshotFromSupabase();
+    const incoming = snapshot.events;
+    const incomingUpdatedAt = snapshot.updatedAt;
 
     if (incomingUpdatedAt > localUpdatedAt) {
       applyCloudSnapshot(incoming, incomingUpdatedAt);
@@ -330,26 +373,17 @@ async function pushEventDataToCloud() {
 
   try {
     setSyncStatus('syncing', '同步中...');
-    const response = await fetch(getSyncEndpoint(), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        events: eventData,
-        clientUpdatedAt: localUpdatedAt,
-      }),
-    });
-
-    if (response.status === 409) {
-      const payload = await response.json();
-      applyCloudSnapshot(normalizeEventList(payload.events), Number(payload.updatedAt) || Date.now());
+    const serverSnapshot = await readSnapshotFromSupabase();
+    if (serverSnapshot.updatedAt > localUpdatedAt) {
+      applyCloudSnapshot(serverSnapshot.events, serverSnapshot.updatedAt);
       setSyncStatus('ok', `衝突已解決 ${getSyncTimeLabel()}`);
       return;
     }
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const updatedAt = Date.now();
+    await writeSnapshotToSupabase(updatedAt);
+    markLocalUpdatedAt(updatedAt);
 
-    const payload = await response.json();
-    markLocalUpdatedAt(Number(payload.updatedAt) || Date.now());
     setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
   } catch (error) {
     setSyncStatus('error', '同步失敗（已保留本機資料）');
@@ -368,19 +402,21 @@ function scheduleCloudPush() {
 
 async function initCloudSync() {
   if (!hasCloudConfig()) {
-    setSyncStatus('local', '本機模式（未設定同步 API）');
-    console.info('Cloud sync disabled: missing BONNIE_SYNC_API_BASE.');
+    setSyncStatus('local', '本機模式（未設定 Supabase）');
+    console.info('Cloud sync disabled: missing Supabase config.');
     return;
   }
 
   try {
-    setSyncStatus('syncing', '同步 API 連線中...');
+    if (!getSupabaseClient()) {
+      throw new Error('Supabase SDK missing or config invalid.');
+    }
 
-    const initialResponse = await fetch(getSyncEndpoint(), { method: 'GET' });
-    if (!initialResponse.ok) throw new Error(`HTTP ${initialResponse.status}`);
-    const initialPayload = await initialResponse.json();
-    const initialIncoming = normalizeEventList(initialPayload.events);
-    const initialUpdatedAt = Number(initialPayload.updatedAt) || 0;
+    setSyncStatus('syncing', 'Supabase 連線中...');
+
+    const snapshot = await readSnapshotFromSupabase();
+    const initialIncoming = snapshot.events;
+    const initialUpdatedAt = snapshot.updatedAt;
 
     if (initialUpdatedAt > localUpdatedAt) {
       applyCloudSnapshot(initialIncoming, initialUpdatedAt);
@@ -414,7 +450,7 @@ async function initCloudSync() {
     if (navigator.onLine) setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
     else setSyncStatus('offline', '離線模式（稍後自動同步）');
   } catch (error) {
-    setSyncStatus('error', '同步 API 連線失敗（本機模式）');
+    setSyncStatus('error', 'Supabase 連線失敗（本機模式）');
     console.warn('Cloud sync init failed:', error);
   }
 }
@@ -963,50 +999,54 @@ const adminCancelBtn = document.getElementById('adminCancelBtn');
 const exportEventsBtn = document.getElementById('exportEventsBtn');
 const importEventsBtn = document.getElementById('importEventsBtn');
 const syncPayload = document.getElementById('syncPayload');
-const syncApiBaseInput = document.getElementById('syncApiBaseInput');
 const syncDatasetInput = document.getElementById('syncDatasetInput');
+const supabaseUrlInput = document.getElementById('supabaseUrlInput');
+const supabaseKeyInput = document.getElementById('supabaseKeyInput');
 const saveSyncConfigBtn = document.getElementById('saveSyncConfigBtn');
 const clearSyncConfigBtn = document.getElementById('clearSyncConfigBtn');
-
-function getDefaultSyncApiBase() {
-  return 'http://localhost:4000';
-}
 
 function getDefaultSyncDataset() {
   return 'bonnie-schedule-main';
 }
 
 function initSyncConfigPanel() {
-  if (syncApiBaseInput) {
-    syncApiBaseInput.value = String(window.BONNIE_SYNC_API_BASE || getDefaultSyncApiBase());
-  }
   if (syncDatasetInput) {
     syncDatasetInput.value = String(window.BONNIE_SYNC_DATASET || getDefaultSyncDataset());
   }
 
+  if (supabaseUrlInput) {
+    supabaseUrlInput.value = String(window.BONNIE_SUPABASE_URL || '');
+  }
+
+  if (supabaseKeyInput) {
+    supabaseKeyInput.value = String(window.BONNIE_SUPABASE_ANON_KEY || '');
+  }
+
   if (saveSyncConfigBtn) {
     saveSyncConfigBtn.addEventListener('click', () => {
-      const apiBase = (syncApiBaseInput ? syncApiBaseInput.value : '').trim();
       const dataset = (syncDatasetInput ? syncDatasetInput.value : '').trim();
+      const supabaseUrl = (supabaseUrlInput ? supabaseUrlInput.value : '').trim();
+      const supabaseKey = (supabaseKeyInput ? supabaseKeyInput.value : '').trim();
 
-      if (!apiBase) {
-        alert('請輸入同步 API 網址。');
+      if (!supabaseUrl || !supabaseKey) {
+        alert('請輸入 Supabase URL 同 Publishable Key。');
         return;
       }
 
       try {
-        const parsed = new URL(apiBase);
+        const parsed = new URL(supabaseUrl);
         if (!/^https?:$/.test(parsed.protocol)) {
-          alert('同步 API 網址只支援 http 或 https。');
+          alert('Supabase URL 只支援 http 或 https。');
           return;
         }
       } catch {
-        alert('同步 API 網址格式不正確。');
+        alert('Supabase URL 格式不正確。');
         return;
       }
 
-      localStorage.setItem('bonnieSyncApiBase', apiBase.replace(/\/+$/, ''));
       localStorage.setItem('bonnieSyncDataset', dataset || getDefaultSyncDataset());
+      localStorage.setItem('bonnieSupabaseUrl', supabaseUrl.replace(/\/+$/, ''));
+      localStorage.setItem('bonnieSupabaseAnonKey', supabaseKey);
       alert('同步設定已儲存，頁面將重新載入。');
       window.location.reload();
     });
@@ -1014,8 +1054,12 @@ function initSyncConfigPanel() {
 
   if (clearSyncConfigBtn) {
     clearSyncConfigBtn.addEventListener('click', () => {
-      localStorage.removeItem('bonnieSyncApiBase');
       localStorage.removeItem('bonnieSyncDataset');
+      localStorage.removeItem('bonnieSupabaseUrl');
+      localStorage.removeItem('bonnieSupabaseAnonKey');
+      // 同步清除舊版 API 模式遺留設定
+      localStorage.removeItem('bonnieSyncProvider');
+      localStorage.removeItem('bonnieSyncApiBase');
       alert('已重設為預設同步設定，頁面將重新載入。');
       window.location.reload();
     });

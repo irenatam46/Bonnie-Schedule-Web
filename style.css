@@ -148,6 +148,12 @@ body {
   gap: 6px;
   margin-bottom: 10px;
 }
+.sync-config-panel select {
+  padding: 10px 12px;
+  border: 1px solid #dcb5dc;
+  border-radius: 8px;
+  outline: none;
+}
 .sync-config-panel label {
   font-size: 0.82rem;
   font-weight: 700;
@@ -155,6 +161,10 @@ body {
 }
 .sync-config-panel input {
   width: 100%;
+}
+.sync-provider-group {
+  display: grid;
+  gap: 6px;
 }
 .sync-config-actions {
   display: flex;
