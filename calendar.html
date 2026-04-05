@@ -26,7 +26,7 @@
       </div>
     </header>
 
-    <div id="syncStatus" class="sync-status local">本機模式（未設定雲端）</div>
+    <div id="syncStatus" class="sync-status local">本機模式（未設定同步 API）</div>
 
     <section class="search-section">
       <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋活動名，例如：GMMTV FANIVAL" />
@@ -97,20 +97,10 @@
   </audio>
 
   <script>
-    // 填入你的 Firebase 專案設定後，會自動啟用跨裝置即時同步。
-    window.BONNIE_FIREBASE_CONFIG = {
-      apiKey: '',
-      authDomain: '',
-      databaseURL: '',
-      projectId: '',
-      storageBucket: '',
-      messagingSenderId: '',
-      appId: '',
-    };
-    window.BONNIE_FIREBASE_DB_PATH = 'bonnieSchedule/events';
+    // 將 API 指到同一個後端，網頁與手機版就會共享同一份資料。
+    window.BONNIE_SYNC_API_BASE = 'http://localhost:4000';
+    window.BONNIE_SYNC_DATASET = 'bonnie-schedule-main';
   </script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

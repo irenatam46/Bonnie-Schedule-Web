@@ -208,12 +208,19 @@ function saveEventData() {
   try {
     localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
   } catch {}
-  void pushEventDataToCloud();
+  markLocalUpdatedAt();
+  scheduleCloudPush();
 }
 
 const eventData = loadEventData();
+const LOCAL_UPDATED_AT_KEY = 'bonnieEventDataUpdatedAt';
+const SYNC_POLL_INTERVAL_MS = 30000;
+
 let cloudSyncReady = false;
 let isApplyingCloudSnapshot = false;
+let syncPollTimer = null;
+let syncPushTimer = null;
+let localUpdatedAt = loadLocalUpdatedAt();
 
 function setSyncStatus(state, text) {
   const el = document.getElementById('syncStatus');
@@ -226,20 +233,35 @@ function getSyncTimeLabel() {
   return new Date().toLocaleTimeString('zh-Hant', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function hasCloudSdk() {
-  return typeof window.firebase !== 'undefined';
+function loadLocalUpdatedAt() {
+  const raw = Number.parseInt(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '0', 10);
+  return Number.isFinite(raw) ? raw : 0;
+}
+
+function markLocalUpdatedAt(ts = Date.now()) {
+  localUpdatedAt = ts;
+  try {
+    localStorage.setItem(LOCAL_UPDATED_AT_KEY, String(ts));
+  } catch {}
 }
 
 function hasCloudConfig() {
-  const config = window.BONNIE_FIREBASE_CONFIG;
-  if (!config || typeof config !== 'object') return false;
-  return ['apiKey', 'authDomain', 'databaseURL', 'projectId'].every((key) => typeof config[key] === 'string' && config[key].trim());
+  return typeof window.BONNIE_SYNC_API_BASE === 'string' && window.BONNIE_SYNC_API_BASE.trim().length > 0;
+}
+
+function getSyncApiBase() {
+  const base = String(window.BONNIE_SYNC_API_BASE || '').trim();
+  return base.replace(/\/+$/, '');
 }
 
 function getCloudDataPath() {
-  const path = window.BONNIE_FIREBASE_DB_PATH;
+  const path = window.BONNIE_SYNC_DATASET;
   if (typeof path === 'string' && path.trim()) return path.trim();
-  return 'bonnieSchedule/events';
+  return 'bonnie-schedule-main';
+}
+
+function getSyncEndpoint() {
+  return `${getSyncApiBase()}/api/sync/${encodeURIComponent(getCloudDataPath())}`;
 }
 
 function normalizeEventList(rawList) {
@@ -267,13 +289,67 @@ function refreshAllEventViews() {
   if (typeof renderMonthCalendar === 'function') renderMonthCalendar(currentCalendarYear, currentCalendarMonth);
 }
 
+function applyCloudSnapshot(incoming, incomingUpdatedAt = Date.now()) {
+  isApplyingCloudSnapshot = true;
+  eventData.splice(0, eventData.length, ...incoming);
+  try {
+    localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
+  } catch {}
+  markLocalUpdatedAt(incomingUpdatedAt);
+  refreshAllEventViews();
+  isApplyingCloudSnapshot = false;
+}
+
+async function pullEventDataFromCloud() {
+  if (!cloudSyncReady && !hasCloudConfig()) return;
+  try {
+    const response = await fetch(getSyncEndpoint(), { method: 'GET' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    const incoming = normalizeEventList(payload.events);
+    const incomingUpdatedAt = Number(payload.updatedAt) || 0;
+
+    if (incomingUpdatedAt > localUpdatedAt) {
+      applyCloudSnapshot(incoming, incomingUpdatedAt);
+      setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
+    }
+  } catch (error) {
+    setSyncStatus('error', '同步拉取失敗（已保留本機資料）');
+    console.warn('Cloud sync pull failed:', error);
+  }
+}
+
 async function pushEventDataToCloud() {
   if (!cloudSyncReady || isApplyingCloudSnapshot) return;
+
+  if (syncPushTimer) {
+    clearTimeout(syncPushTimer);
+    syncPushTimer = null;
+  }
+
   try {
     setSyncStatus('syncing', '同步中...');
-    const path = getCloudDataPath();
-    const db = window.firebase.database();
-    await db.ref(path).set(eventData);
+    const response = await fetch(getSyncEndpoint(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: eventData,
+        clientUpdatedAt: localUpdatedAt,
+      }),
+    });
+
+    if (response.status === 409) {
+      const payload = await response.json();
+      applyCloudSnapshot(normalizeEventList(payload.events), Number(payload.updatedAt) || Date.now());
+      setSyncStatus('ok', `衝突已解決 ${getSyncTimeLabel()}`);
+      return;
+    }
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    markLocalUpdatedAt(Number(payload.updatedAt) || Date.now());
     setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
   } catch (error) {
     setSyncStatus('error', '同步失敗（已保留本機資料）');
@@ -281,61 +357,48 @@ async function pushEventDataToCloud() {
   }
 }
 
+function scheduleCloudPush() {
+  if (!cloudSyncReady || isApplyingCloudSnapshot) return;
+  if (syncPushTimer) clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(() => {
+    syncPushTimer = null;
+    void pushEventDataToCloud();
+  }, 800);
+}
+
 async function initCloudSync() {
-  if (!hasCloudSdk() || !hasCloudConfig()) {
-    setSyncStatus('local', '本機模式（未設定雲端）');
-    console.info('Cloud sync disabled: missing Firebase SDK or config.');
+  if (!hasCloudConfig()) {
+    setSyncStatus('local', '本機模式（未設定同步 API）');
+    console.info('Cloud sync disabled: missing BONNIE_SYNC_API_BASE.');
     return;
   }
 
   try {
-    setSyncStatus('syncing', '雲端連線中...');
+    setSyncStatus('syncing', '同步 API 連線中...');
 
-    if (!window.firebase.apps.length) {
-      window.firebase.initializeApp(window.BONNIE_FIREBASE_CONFIG);
-    }
+    const initialResponse = await fetch(getSyncEndpoint(), { method: 'GET' });
+    if (!initialResponse.ok) throw new Error(`HTTP ${initialResponse.status}`);
+    const initialPayload = await initialResponse.json();
+    const initialIncoming = normalizeEventList(initialPayload.events);
+    const initialUpdatedAt = Number(initialPayload.updatedAt) || 0;
 
-    const path = getCloudDataPath();
-    const db = window.firebase.database();
-    const ref = db.ref(path);
-
-    const initialSnapshot = await ref.once('value');
-    const initialIncoming = normalizeEventList(initialSnapshot.val());
-
-    if (initialIncoming.length) {
-      isApplyingCloudSnapshot = true;
-      eventData.splice(0, eventData.length, ...initialIncoming);
-      try {
-        localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
-      } catch {}
-      refreshAllEventViews();
-      isApplyingCloudSnapshot = false;
+    if (initialUpdatedAt > localUpdatedAt) {
+      applyCloudSnapshot(initialIncoming, initialUpdatedAt);
     } else if (eventData.length) {
-      await ref.set(eventData);
+      cloudSyncReady = true;
+      await pushEventDataToCloud();
     }
-
-    ref.on('value', (snapshot) => {
-      const incoming = normalizeEventList(snapshot.val());
-
-      if (!incoming.length) {
-        if (eventData.length) void pushEventDataToCloud();
-        return;
-      }
-
-      isApplyingCloudSnapshot = true;
-      eventData.splice(0, eventData.length, ...incoming);
-      try {
-        localStorage.setItem('bonnieEventData', JSON.stringify(eventData));
-      } catch {}
-      refreshAllEventViews();
-      isApplyingCloudSnapshot = false;
-      setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
-    });
 
     cloudSyncReady = true;
 
+    if (syncPollTimer) clearInterval(syncPollTimer);
+    syncPollTimer = setInterval(() => {
+      void pullEventDataFromCloud();
+    }, SYNC_POLL_INTERVAL_MS);
+
     window.addEventListener('online', () => {
       setSyncStatus('syncing', '網絡已恢復，同步中...');
+      void pullEventDataFromCloud();
       void pushEventDataToCloud();
     });
 
@@ -343,10 +406,15 @@ async function initCloudSync() {
       setSyncStatus('offline', '離線模式（稍後自動同步）');
     });
 
+    window.addEventListener('focus', () => {
+      if (!navigator.onLine) return;
+      void pullEventDataFromCloud();
+    });
+
     if (navigator.onLine) setSyncStatus('ok', `已同步 ${getSyncTimeLabel()}`);
     else setSyncStatus('offline', '離線模式（稍後自動同步）');
   } catch (error) {
-    setSyncStatus('error', '雲端連線失敗（本機模式）');
+    setSyncStatus('error', '同步 API 連線失敗（本機模式）');
     console.warn('Cloud sync init failed:', error);
   }
 }
