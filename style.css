@@ -656,6 +656,8 @@ body.drawer-open {
   .app-container {
     max-width: 100%;
     padding: 12px;
+    /* Leave room for fixed BGM control so bottom event content is not covered. */
+    padding-bottom: calc(128px + env(safe-area-inset-bottom));
   }
   
   .top-bar {
@@ -769,7 +771,7 @@ body.drawer-open {
   
   .bgm-control {
     left: 15px;
-    bottom: 15px;
+    bottom: calc(15px + env(safe-area-inset-bottom));
   }
   
   .bgm-btn {
@@ -782,6 +784,7 @@ body.drawer-open {
 @media (max-width: 480px) {
   .app-container {
     padding: 8px;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
   }
   
   .top-bar {
@@ -975,7 +978,7 @@ body.drawer-open {
   
   .bgm-control {
     left: 12px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
   }
   
   .bgm-btn {
@@ -997,6 +1000,7 @@ body.drawer-open {
 @media (max-width: 360px) {
   .app-container {
     padding: 6px;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
   }
   
   .avatar {
