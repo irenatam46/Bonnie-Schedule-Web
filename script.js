@@ -38,8 +38,9 @@ const LANGS = {
     bgmStop: '停止背景音樂',
     bgmHint: '如果瀏覽器封鎖自動播放，按一下即可開始。',
     bgmPending: '點擊頁面播放背景音樂',
-    adminGateQuestion: 'Bonnie 過敏食物係咩？（請輸入其中一樣）',
-    adminGateDenied: '驗證失敗，無法進入後台管理區。',
+    adminGateUserQuestion: '請輸入管理員名稱：',
+    adminGatePasswordQuestion: '請輸入管理員密碼：',
+    adminGateDenied: '管理員名稱或密碼錯誤，無法解鎖活動管理區。',
     weekHeaders: ['日', '一', '二', '三', '四', '五', '六'],
     monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     yearLabel: (y, m) => `${y} 年 ${m}`,
@@ -83,8 +84,9 @@ const LANGS = {
     bgmStop: 'Stop BGM',
     bgmHint: 'If autoplay is blocked, click here to start.',
     bgmPending: 'Click anywhere to play BGM',
-    adminGateQuestion: 'What food is Bonnie allergic to? (Enter one)',
-    adminGateDenied: 'Verification failed. Access denied.',
+    adminGateUserQuestion: 'Enter admin username:',
+    adminGatePasswordQuestion: 'Enter admin password:',
+    adminGateDenied: 'Invalid admin username or password. Access denied.',
     weekHeaders: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     yearLabel: (y, m) => `${y} — ${m}`,
@@ -128,8 +130,9 @@ const LANGS = {
     bgmStop: 'BGM を停止',
     bgmHint: '自動再生がブロックされた場合はここをクリックしてください。',
     bgmPending: 'クリックして BGM を再生',
-    adminGateQuestion: 'Bonnie のアレルギー食品は何ですか？（一つ入力）',
-    adminGateDenied: '認証に失敗しました。管理画面に入れません。',
+    adminGateUserQuestion: '管理者ユーザー名を入力してください：',
+    adminGatePasswordQuestion: '管理者パスワードを入力してください：',
+    adminGateDenied: '管理者ユーザー名またはパスワードが正しくありません。',
     weekHeaders: ['日', '月', '火', '水', '木', '金', '土'],
     monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     yearLabel: (y, m) => `${y}年 ${m}`,
@@ -297,6 +300,8 @@ function getTranslatedText(text) {
   if (shouldSkipAutoTranslate(text)) return '';
 
   const source = text.trim();
+  if (currentLang === 'zh') return source;
+
   const targetCode = getTranslateTargetCode();
   const cacheKey = `${targetCode}::${source}`;
   const cached = translationCache.get(cacheKey);
@@ -547,13 +552,12 @@ let currentCalendarMonth = new Date().getMonth();
 let isAdminVerified = false;
 
 function requestAdminAccess() {
-  const answer = window.prompt(t('adminGateQuestion'));
-  if (answer === null) return false;
-  const normalized = answer.trim().toLowerCase().replace(/\s+/g, '');
-  return normalized === '牛肉'
-    || normalized === '牛奶'
-    || normalized === '牛肉同牛奶'
-    || normalized === '牛奶同牛肉';
+  const username = window.prompt(t('adminGateUserQuestion'));
+  if (username === null) return false;
+  const password = window.prompt(t('adminGatePasswordQuestion'));
+  if (password === null) return false;
+
+  return username.trim() === 'irena' && password === '20020102';
 }
 
 const adminPanel = document.getElementById('adminPanel');
