@@ -19,6 +19,7 @@ const LANGS = {
     adminAdd: '新增活動',
     adminUpdate: '更新活動',
     adminCancel: '取消編輯',
+    adminDeleteCurrent: '刪除活動',
     adminExisting: '現有活動',
     adminEmpty: '目前沒有活動。',
     adminEdit: '編輯',
@@ -27,6 +28,7 @@ const LANGS = {
     adminMerged: '同名活動已合併。',
     adminUpdated: '活動已更新。',
     adminConfirmDelete: (name) => `確定刪除「${name}」？`,
+    adminConfirmDeleteCurrent: '你將要刪除目前編輯中的活動，請再次確認。',
     adminConfirmMerge: (name) => `發現活動名稱「${name}」重複，是否合併活動？`,
     noEvents: '目前無符合條件的活動。',
     notFound: (kw) => `找不到活動：「${kw}」`,
@@ -67,6 +69,7 @@ const LANGS = {
     adminAdd: 'Add Event',
     adminUpdate: 'Update Event',
     adminCancel: 'Cancel Edit',
+    adminDeleteCurrent: 'Delete Event',
     adminExisting: 'Existing Events',
     adminEmpty: 'No events yet.',
     adminEdit: 'Edit',
@@ -75,6 +78,7 @@ const LANGS = {
     adminMerged: 'Duplicate event merged.',
     adminUpdated: 'Event updated.',
     adminConfirmDelete: (name) => `Delete "${name}"?`,
+    adminConfirmDeleteCurrent: 'You are about to delete the current event. Please confirm again.',
     adminConfirmMerge: (name) => `Duplicate event name "${name}" found. Merge activities?`,
     noEvents: 'No events found.',
     notFound: (kw) => `No events found: "${kw}"`,
@@ -115,6 +119,7 @@ const LANGS = {
     adminAdd: 'イベントを追加',
     adminUpdate: 'イベントを更新',
     adminCancel: '編集をキャンセル',
+    adminDeleteCurrent: 'イベントを削除',
     adminExisting: '既存のイベント',
     adminEmpty: 'イベントはありません。',
     adminEdit: '編集',
@@ -123,6 +128,7 @@ const LANGS = {
     adminMerged: '同名イベントを統合しました。',
     adminUpdated: 'イベントを更新しました。',
     adminConfirmDelete: (name) => `「${name}」を削除しますか？`,
+    adminConfirmDeleteCurrent: '現在編集中のイベントを削除します。もう一度確認してください。',
     adminConfirmMerge: (name) => `同じイベント名「${name}」が見つかりました。統合しますか？`,
     noEvents: '該当するイベントはありません。',
     notFound: (kw) => `イベントが見つかりません：「${kw}」`,
@@ -1391,6 +1397,7 @@ adminCancelBtn.addEventListener('click', cancelEditEvent);
 if (adminDeleteCurrentBtn) {
   adminDeleteCurrentBtn.addEventListener('click', () => {
     if (editingId === null) return;
+    if (!confirm(t('adminConfirmDeleteCurrent'))) return;
     deleteEvent(editingId);
   });
 }
