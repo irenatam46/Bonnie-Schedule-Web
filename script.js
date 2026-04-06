@@ -702,28 +702,56 @@ function openXComposer(keyword) {
   }
 
   const encoded = encodeURIComponent(text);
-  const appDeepLinks = [
-    `x://post?message=${encoded}`,
-    `twitter://post?message=${encoded}`,
-  ];
+  const isAndroid = /Android/i.test(navigator.userAgent || '');
+  const appDeepLinks = isAndroid
+    ? [
+      `intent://post?message=${encoded}#Intent;scheme=twitter;package=com.twitter.android;end`,
+      `twitter://post?message=${encoded}`,
+      `twitter://post?text=${encoded}`,
+    ]
+    : [
+      `twitter://post?message=${encoded}`,
+      `twitter://post?text=${encoded}`,
+      `x://post?message=${encoded}`,
+    ];
 
   let hasNavigatedAway = false;
-  const onVisibilityChange = () => {
-    if (document.hidden) hasNavigatedAway = true;
+  const timers = [];
+  const markNavigatedAway = () => {
+    hasNavigatedAway = true;
   };
 
-  document.addEventListener('visibilitychange', onVisibilityChange, { once: true });
-  window.location.href = appDeepLinks[0];
+  const cleanup = () => {
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('pagehide', markNavigatedAway);
+    window.removeEventListener('blur', markNavigatedAway);
+    timers.forEach((timerId) => clearTimeout(timerId));
+  };
 
-  setTimeout(() => {
-    if (hasNavigatedAway) return;
-    window.location.href = appDeepLinks[1];
-  }, 450);
+  const onVisibilityChange = () => {
+    if (!document.hidden) return;
+    markNavigatedAway();
+    cleanup();
+  };
 
-  setTimeout(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('pagehide', markNavigatedAway, { once: true });
+  window.addEventListener('blur', markNavigatedAway, { once: true });
+
+  appDeepLinks.forEach((url, index) => {
+    const timerId = setTimeout(() => {
+      if (hasNavigatedAway) return;
+      window.location.href = url;
+    }, index * 650);
+    timers.push(timerId);
+  });
+
+  const fallbackTimerId = setTimeout(() => {
     if (hasNavigatedAway) return;
+    cleanup();
     window.location.href = webUrl;
-  }, 1000);
+  }, 2300);
+  timers.push(fallbackTimerId);
 }
 
 function normalizeSearchText(value) {
@@ -1521,8 +1549,13 @@ document.querySelectorAll('.lang-btn').forEach((btn) => {
 });
 
 document.addEventListener('click', (event) => {
-  if (!(event.target instanceof Element)) return;
-  const link = event.target.closest('.event-keyword-link');
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  let link = path.find((node) => node instanceof Element && node.classList && node.classList.contains('event-keyword-link'));
+
+  if (!link && event.target instanceof Element) {
+    link = event.target.closest('.event-keyword-link');
+  }
+
   if (!link) return;
 
   const keyword = (link.textContent || '').trim();
