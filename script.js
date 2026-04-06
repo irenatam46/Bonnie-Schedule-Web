@@ -687,6 +687,45 @@ function buildXPostUrl(keyword) {
   return `https://x.com/intent/post?text=${encodeURIComponent(keyword)}`;
 }
 
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+}
+
+function openXComposer(keyword) {
+  const text = (keyword || '').trim();
+  if (!text) return;
+
+  const webUrl = buildXPostUrl(text);
+  if (!isMobileDevice()) {
+    window.open(webUrl, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  const encoded = encodeURIComponent(text);
+  const appDeepLinks = [
+    `x://post?message=${encoded}`,
+    `twitter://post?message=${encoded}`,
+  ];
+
+  let hasNavigatedAway = false;
+  const onVisibilityChange = () => {
+    if (document.hidden) hasNavigatedAway = true;
+  };
+
+  document.addEventListener('visibilitychange', onVisibilityChange, { once: true });
+  window.location.href = appDeepLinks[0];
+
+  setTimeout(() => {
+    if (hasNavigatedAway) return;
+    window.location.href = appDeepLinks[1];
+  }, 450);
+
+  setTimeout(() => {
+    if (hasNavigatedAway) return;
+    window.location.href = webUrl;
+  }, 1000);
+}
+
 function normalizeSearchText(value) {
   return (value || '')
     .toString()
@@ -1479,6 +1518,20 @@ document.querySelectorAll('.lang-btn').forEach((btn) => {
     localStorage.setItem('bonnieLang', currentLang);
     applyLang();
   });
+});
+
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element)) return;
+  const link = event.target.closest('.event-keyword-link');
+  if (!link) return;
+
+  const keyword = (link.textContent || '').trim();
+  if (!keyword) return;
+
+  if (isMobileDevice()) {
+    event.preventDefault();
+    openXComposer(keyword);
+  }
 });
 
 monthPicker.value = getCurrentYearMonthValue();
