@@ -1125,6 +1125,7 @@ let editingId = null;
 
 const adminSubmitBtn = document.getElementById('adminSubmitBtn');
 const adminCancelBtn = document.getElementById('adminCancelBtn');
+const adminDeleteCurrentBtn = document.getElementById('adminDeleteCurrentBtn');
 const exportEventsBtn = document.getElementById('exportEventsBtn');
 const importEventsBtn = document.getElementById('importEventsBtn');
 const syncPayload = document.getElementById('syncPayload');
@@ -1323,6 +1324,7 @@ function startEditEvent(id) {
   document.getElementById('newCoArtists').value = ev.coArtists || '';
   adminSubmitBtn.textContent = t('adminUpdate');
   adminCancelBtn.hidden = false;
+  if (adminDeleteCurrentBtn) adminDeleteCurrentBtn.hidden = false;
   document.getElementById('adminPanel').scrollTop = 0;
 }
 
@@ -1331,6 +1333,7 @@ function cancelEditEvent() {
   adminForm.reset();
   adminSubmitBtn.textContent = t('adminAdd');
   adminCancelBtn.hidden = true;
+  if (adminDeleteCurrentBtn) adminDeleteCurrentBtn.hidden = true;
 }
 
 function deleteEvent(id) {
@@ -1384,6 +1387,13 @@ function mergeActivities(target, duplicates, incoming) {
 }
 
 adminCancelBtn.addEventListener('click', cancelEditEvent);
+
+if (adminDeleteCurrentBtn) {
+  adminDeleteCurrentBtn.addEventListener('click', () => {
+    if (editingId === null) return;
+    deleteEvent(editingId);
+  });
+}
 
 if (exportEventsBtn) {
   exportEventsBtn.addEventListener('click', exportEventsData);
