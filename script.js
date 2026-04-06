@@ -669,14 +669,18 @@ function syncAdminEditState() {
 }
 
 function formatStart(ts) {
-  const formatted = new Date(ts).toLocaleString(getCurrentLangLocale(), {
+  const date = new Date(ts);
+  const datePart = date.toLocaleDateString(getCurrentLangLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+  });
+  const timePart = date.toLocaleTimeString(getCurrentLangLocale(), {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   });
-  return `${formatted} GMT+7`;
+  return `${datePart} GMT+7 ${timePart}`;
 }
 
 function buildXPostUrl(keyword) {
