@@ -7,6 +7,12 @@ const LANGS = {
     clear: '清除',
     searchResults: '搜尋結果',
     adminTitle: '後台管理活動區',
+    adminEventsSectionTitle: '新增活動區',
+    adminSyncSectionTitle: '跨裝置同步',
+    adminUnlock: '管理員驗證',
+    adminUnlocked: '已解鎖',
+    adminLockedHint: '目前為鎖定狀態，需管理員驗證才可新增、編輯、刪除。',
+    adminUnlockedHint: '已通過管理員驗證，可新增、編輯、刪除活動。',
     fieldName: '活動名稱',
     fieldLocation: '地點',
     fieldCoArtists: '同場藝人（可不填）',
@@ -46,6 +52,12 @@ const LANGS = {
     clear: 'Clear',
     searchResults: 'Search Results',
     adminTitle: 'Admin — Manage Events',
+    adminEventsSectionTitle: 'Add/Edit Events',
+    adminSyncSectionTitle: 'Cross-device Sync',
+    adminUnlock: 'Verify Admin',
+    adminUnlocked: 'Unlocked',
+    adminLockedHint: 'This section is locked. Admin verification is required to add, edit, or delete events.',
+    adminUnlockedHint: 'Admin verified. You can now add, edit, and delete events.',
     fieldName: 'Event name',
     fieldLocation: 'Venue',
     fieldCoArtists: 'Co-artists (optional)',
@@ -85,6 +97,12 @@ const LANGS = {
     clear: 'クリア',
     searchResults: '検索結果',
     adminTitle: '管理画面 — イベント管理',
+    adminEventsSectionTitle: 'イベント追加・編集',
+    adminSyncSectionTitle: 'デバイス間同期',
+    adminUnlock: '管理者認証',
+    adminUnlocked: '解除済み',
+    adminLockedHint: '現在ロック中です。追加・編集・削除には管理者認証が必要です。',
+    adminUnlockedHint: '管理者認証済みです。イベントの追加・編集・削除ができます。',
     fieldName: 'イベント名',
     fieldLocation: '会場',
     fieldCoArtists: '共演アーティスト（任意）',
@@ -147,6 +165,8 @@ function applyLang() {
 
   if (editingId !== null && adminSubmitBtn) adminSubmitBtn.textContent = t('adminUpdate');
   else if (adminSubmitBtn) adminSubmitBtn.textContent = t('adminAdd');
+
+  syncAdminEditState();
 
   renderEvents(typeof monthPicker !== 'undefined' ? monthPicker.value : '');
   if (typeof renderAdminEventList === 'function' && adminPanel && adminPanel.classList.contains('open')) renderAdminEventList();
@@ -223,12 +243,79 @@ let syncPollTimer = null;
 let syncPushTimer = null;
 let localUpdatedAt = loadLocalUpdatedAt();
 let supabaseClient = null;
+const translationCache = new Map();
+let translationRefreshTimer = null;
 
 function setSyncStatus(state, text) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
   el.className = `sync-status ${state}`;
   el.textContent = text;
+}
+
+function getCurrentLangLocale() {
+  if (currentLang === 'en') return 'en-US';
+  if (currentLang === 'ja') return 'ja-JP';
+  return 'zh-Hant';
+}
+
+function getTranslateTargetCode() {
+  if (currentLang === 'en') return 'en';
+  if (currentLang === 'ja') return 'ja';
+  return 'zh-TW';
+}
+
+function shouldSkipAutoTranslate(text) {
+  return !text || !text.trim();
+}
+
+function scheduleTranslationRefresh() {
+  if (translationRefreshTimer) return;
+  translationRefreshTimer = setTimeout(() => {
+    translationRefreshTimer = null;
+    refreshAllEventViews();
+  }, 60);
+}
+
+async function fetchTranslatedText(text, targetCode) {
+  const apiUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetCode)}&dt=t&q=${encodeURIComponent(text)}`;
+  const response = await fetch(apiUrl);
+  if (!response.ok) throw new Error(`Translation request failed: ${response.status}`);
+
+  const payload = await response.json();
+  if (!Array.isArray(payload) || !Array.isArray(payload[0])) return text;
+
+  const translated = payload[0]
+    .map((item) => (Array.isArray(item) ? item[0] : ''))
+    .join('')
+    .trim();
+
+  return translated || text;
+}
+
+function getTranslatedText(text) {
+  if (shouldSkipAutoTranslate(text)) return '';
+
+  const source = text.trim();
+  const targetCode = getTranslateTargetCode();
+  const cacheKey = `${targetCode}::${source}`;
+  const cached = translationCache.get(cacheKey);
+  if (typeof cached === 'string') return cached;
+
+  translationCache.set(cacheKey, source);
+  void fetchTranslatedText(source, targetCode)
+    .then((translated) => {
+      const normalized = translated.trim() || source;
+      if (translationCache.get(cacheKey) !== normalized) {
+        translationCache.set(cacheKey, normalized);
+        scheduleTranslationRefresh();
+      }
+    })
+    .catch(() => {
+      translationCache.set(cacheKey, source);
+    });
+
+  return source;
 }
 
 function getSyncTimeLabel() {
@@ -319,7 +406,7 @@ function normalizeEventList(rawList) {
       name: ev.name.trim(),
       location: ev.location.trim(),
       start: ev.start,
-      keyword: typeof ev.keyword === 'string' && ev.keyword.trim() ? ev.keyword.trim() : '未設定',
+      keyword: typeof ev.keyword === 'string' ? ev.keyword.trim() : '',
       coArtists: typeof ev.coArtists === 'string' ? ev.coArtists.trim() : '',
     }));
 }
@@ -488,6 +575,8 @@ const searchResults = document.getElementById('searchResults');
 const resultItems = document.getElementById('resultItems');
 const resultList = document.getElementById('searchResults');
 const adminForm = document.getElementById('adminForm');
+const adminAuthBtn = document.getElementById('adminAuthBtn');
+const adminAuthStatus = document.getElementById('adminAuthStatus');
 
 let isBgmPlaying = false;
 let hasPendingAutoplay = false;
@@ -545,8 +634,26 @@ function canEditAdminData() {
   return isAdminVerified;
 }
 
+function syncAdminEditState() {
+  if (adminAuthBtn) {
+    adminAuthBtn.textContent = canEditAdminData() ? t('adminUnlocked') : t('adminUnlock');
+    adminAuthBtn.classList.toggle('unlocked', canEditAdminData());
+  }
+
+  if (adminAuthStatus) {
+    adminAuthStatus.textContent = canEditAdminData() ? t('adminUnlockedHint') : t('adminLockedHint');
+    adminAuthStatus.classList.toggle('unlocked', canEditAdminData());
+  }
+
+  if (adminForm) {
+    adminForm.querySelectorAll('input, button').forEach((el) => {
+      el.disabled = !canEditAdminData();
+    });
+  }
+}
+
 function formatStart(ts) {
-  const formatted = new Date(ts).toLocaleString('zh-Hant', {
+  const formatted = new Date(ts).toLocaleString(getCurrentLangLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -665,6 +772,7 @@ function buildEventCard(event) {
   const monthLabel = t('monthNames')[eventDate.getMonth()];
   const monthText = currentLang === 'en' ? monthLabel.toUpperCase() : monthLabel;
   const dayText = String(eventDate.getDate()).padStart(2, '0');
+  const translatedLocation = getTranslatedText(event.location);
   const el = document.createElement('article');
   el.className = 'event-card';
   el.dataset.eventId = event.id;
@@ -678,10 +786,10 @@ function buildEventCard(event) {
     </div>
     <div class="event-content">
       <h3>${event.name}</h3>
-      <p><strong>${t('fieldVenue')}</strong>${event.location}</p>
+      <p><strong>${t('fieldVenue')}</strong>${translatedLocation}</p>
       <p><strong>${t('fieldStart')}</strong>${formatStart(event.start)}</p>
       ${event.coArtists ? `<p class="event-coartists"><span class="event-coartists-icon">🎤</span><strong>${t('fieldCoArtistsLabel')}</strong>${event.coArtists}</p>` : ''}
-      <p class="event-keyword"><strong>${t('fieldKeyword')}</strong><a class="event-keyword-link" href="${buildXPostUrl(event.keyword)}" target="_blank" rel="noopener noreferrer">${event.keyword}</a></p>
+      ${event.keyword ? `<p class="event-keyword"><strong>${t('fieldKeyword')}</strong><a class="event-keyword-link" href="${buildXPostUrl(event.keyword)}" target="_blank" rel="noopener noreferrer">${event.keyword}</a></p>` : ''}
     </div>
   `;
   return el;
@@ -821,7 +929,7 @@ function renderMonthCalendar(year, month) {
         if (isEventExpired(ev.start)) {
           item.classList.add('is-expired');
         }
-        item.textContent = `${ev.name} - ${ev.location}`;
+        item.textContent = `${ev.name} - ${getTranslatedText(ev.location)}`;
         item.addEventListener('click', () => {
           const targetMonth = getYearMonthValueFromStart(ev.start);
           monthPicker.value = targetMonth;
@@ -905,7 +1013,9 @@ function renderSearch(keyword) {
       if (isEventExpired(ev.start)) {
         item.classList.add('is-expired');
       }
-      item.innerHTML = `- ${formatStart(ev.start)} | ${ev.location} | ${ev.keyword}`;
+      const translatedLocation = getTranslatedText(ev.location);
+      const keywordPart = ev.keyword ? ` | ${ev.keyword}` : '';
+      item.innerHTML = `- ${formatStart(ev.start)} | ${translatedLocation}${keywordPart}`;
       resultItems.appendChild(item);
     });
   });
@@ -951,10 +1061,13 @@ function openAdminDrawer() {
     adminBackdrop.setAttribute('aria-hidden', 'false');
   }
   document.body.classList.add('drawer-open');
+  syncAdminEditState();
   renderAdminEventList();
 }
 
 function closeAdminDrawer() {
+  isAdminVerified = false;
+  cancelEditEvent();
   adminPanel.classList.remove('open');
   adminPanel.setAttribute('aria-hidden', 'true');
   if (adminBackdrop) {
@@ -962,21 +1075,27 @@ function closeAdminDrawer() {
     adminBackdrop.setAttribute('aria-hidden', 'true');
   }
   document.body.classList.remove('drawer-open');
+  syncAdminEditState();
 }
 
 adminToggle.addEventListener('click', () => {
   const isOpening = !adminPanel.classList.contains('open');
-  if (isOpening && !isAdminVerified) {
+  if (isOpening) openAdminDrawer();
+  else closeAdminDrawer();
+});
+
+if (adminAuthBtn) {
+  adminAuthBtn.addEventListener('click', () => {
     const verified = requestAdminAccess();
     if (!verified) {
       alert(t('adminGateDenied'));
       return;
     }
     isAdminVerified = true;
-  }
-  if (isOpening) openAdminDrawer();
-  else closeAdminDrawer();
-});
+    syncAdminEditState();
+    renderAdminEventList();
+  });
+}
 
 if (adminBackdrop) {
   adminBackdrop.addEventListener('click', closeAdminDrawer);
@@ -1190,7 +1309,7 @@ function startEditEvent(id) {
   document.getElementById('newName').value = ev.name;
   document.getElementById('newLocation').value = ev.location;
   document.getElementById('newStart').value = ev.start;
-  document.getElementById('newKeyword').value = ev.keyword !== '未設定' ? ev.keyword : '';
+  document.getElementById('newKeyword').value = ev.keyword || '';
   document.getElementById('newCoArtists').value = ev.coArtists || '';
   adminSubmitBtn.textContent = t('adminUpdate');
   adminCancelBtn.hidden = false;
@@ -1242,7 +1361,7 @@ adminForm.addEventListener('submit', (e) => {
   const name = document.getElementById('newName').value.trim();
   const location = document.getElementById('newLocation').value.trim();
   const start = document.getElementById('newStart').value;
-  const keyword = document.getElementById('newKeyword').value.trim() || '未設定';
+  const keyword = document.getElementById('newKeyword').value.trim();
 
   if (!name || !location || !start) return;
 

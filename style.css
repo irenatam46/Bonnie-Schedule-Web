@@ -279,6 +279,8 @@ body {
 .event-card h3 {
   margin: 0 0 6px;
   color: #5a0d6e;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .event-card p {
   margin: 4px 0;
@@ -454,6 +456,61 @@ body.drawer-open {
 }
 .admin-panel-header h2 {
   margin: 0;
+}
+.admin-section {
+  background: #fff8fe;
+  border: 1px solid #e6c9e3;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.admin-section:last-child {
+  margin-bottom: 0;
+}
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin-subtitle {
+  margin: 10px 0;
+  font-size: 1rem;
+  color: #5a1675;
+}
+.admin-auth-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #bf6eb5;
+  background: #f7d9ef;
+  color: #5a1675;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-auth-btn.unlocked {
+  border-color: #4ea777;
+  background: #e1f7ea;
+  color: #0e6a3f;
+}
+.admin-auth-status {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: #8b5a2f;
+  background: #fff4cf;
+  border: 1px solid #f0d78a;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.admin-auth-status.unlocked {
+  color: #14653f;
+  background: #e7f8ee;
+  border-color: #9ad2b4;
+}
+.admin-form-actions {
+  display: flex;
+  gap: 8px;
 }
 .admin-close-btn {
   width: 34px;

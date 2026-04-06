@@ -62,23 +62,30 @@
         <h2 data-i18n="adminTitle">後台管理活動區</h2>
         <button type="button" id="adminCloseBtn" class="admin-close-btn" aria-label="關閉後台">✕</button>
       </div>
-      <form id="adminForm">
-        <input id="newName" type="text" data-i18n-placeholder="fieldName" placeholder="活動名稱" required />
-        <input id="newLocation" type="text" data-i18n-placeholder="fieldLocation" placeholder="地點" required />
-        <input id="newStart" type="datetime-local" required />
-        <input id="newCoArtists" type="text" data-i18n-placeholder="fieldCoArtists" placeholder="同場藝人（可不填）" />
-        <input id="newKeyword" type="text" placeholder="Keyword & Tag" />
-        <div style="display:flex;gap:8px;">
-          <button type="submit" id="adminSubmitBtn" data-i18n="adminAdd">新增活動</button>
-          <button type="button" id="adminCancelBtn" data-i18n="adminCancel" hidden>取消編輯</button>
+      <section class="admin-section admin-events-section">
+        <div class="admin-section-head">
+          <h3 data-i18n="adminEventsSectionTitle">新增活動區</h3>
+          <button type="button" id="adminAuthBtn" class="admin-auth-btn" data-i18n="adminUnlock">管理員驗證</button>
         </div>
-      </form>
-      <hr style="margin:14px 0;border-color:#e0c0e0;" />
-      <h3 data-i18n="adminExisting" style="margin:0 0 10px;font-size:1rem;color:#5a1675;">現有活動</h3>
-      <div id="adminEventList"></div>
-      <hr style="margin:14px 0;border-color:#e0c0e0;" />
-      <h3 style="margin:0 0 10px;font-size:1rem;color:#5a1675;">跨裝置同步</h3>
-      <div class="admin-sync-tools">
+        <p id="adminAuthStatus" class="admin-auth-status" data-i18n="adminLockedHint">目前為鎖定狀態，需管理員驗證才可新增、編輯、刪除。</p>
+        <form id="adminForm">
+          <input id="newName" type="text" data-i18n-placeholder="fieldName" placeholder="活動名稱" required />
+          <input id="newLocation" type="text" data-i18n-placeholder="fieldLocation" placeholder="地點" required />
+          <input id="newStart" type="datetime-local" required />
+          <input id="newCoArtists" type="text" data-i18n-placeholder="fieldCoArtists" placeholder="同場藝人（可不填）" />
+          <input id="newKeyword" type="text" placeholder="Keyword & Tag" />
+          <div class="admin-form-actions">
+            <button type="submit" id="adminSubmitBtn" data-i18n="adminAdd">新增活動</button>
+            <button type="button" id="adminCancelBtn" data-i18n="adminCancel" hidden>取消編輯</button>
+          </div>
+        </form>
+        <h3 data-i18n="adminExisting" class="admin-subtitle">現有活動</h3>
+        <div id="adminEventList"></div>
+      </section>
+
+      <section class="admin-section admin-sync-section">
+        <h3 data-i18n="adminSyncSectionTitle" class="admin-subtitle">跨裝置同步</h3>
+        <div class="admin-sync-tools">
         <div class="sync-config-panel">
           <div class="sync-provider-group">
             <label for="supabaseUrlInput">Supabase Project URL</label>
@@ -97,6 +104,8 @@
         <button type="button" id="exportEventsBtn">匯出活動資料</button>
         <button type="button" id="importEventsBtn">匯入活動資料</button>
         <textarea id="syncPayload" rows="6" placeholder="把匯出的 JSON 貼到這裡，再按『匯入活動資料』"></textarea>
+        </div>
+      </section>
       </div>
     </section>
 
