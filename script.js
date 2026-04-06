@@ -24,8 +24,10 @@ const LANGS = {
     adminEdit: '編輯',
     adminDelete: '刪除',
     adminAdded: '活動已新增。',
+    adminMerged: '同名活動已合併。',
     adminUpdated: '活動已更新。',
     adminConfirmDelete: (name) => `確定刪除「${name}」？`,
+    adminConfirmMerge: (name) => `發現活動名稱「${name}」重複，是否合併活動？`,
     noEvents: '目前無符合條件的活動。',
     notFound: (kw) => `找不到活動：「${kw}」`,
     records: (n) => `${n} 筆`,
@@ -70,8 +72,10 @@ const LANGS = {
     adminEdit: 'Edit',
     adminDelete: 'Delete',
     adminAdded: 'Event added.',
+    adminMerged: 'Duplicate event merged.',
     adminUpdated: 'Event updated.',
     adminConfirmDelete: (name) => `Delete "${name}"?`,
+    adminConfirmMerge: (name) => `Duplicate event name "${name}" found. Merge activities?`,
     noEvents: 'No events found.',
     notFound: (kw) => `No events found: "${kw}"`,
     records: (n) => `${n} record(s)`,
@@ -116,8 +120,10 @@ const LANGS = {
     adminEdit: '編集',
     adminDelete: '削除',
     adminAdded: 'イベントを追加しました。',
+    adminMerged: '同名イベントを統合しました。',
     adminUpdated: 'イベントを更新しました。',
     adminConfirmDelete: (name) => `「${name}」を削除しますか？`,
+    adminConfirmMerge: (name) => `同じイベント名「${name}」が見つかりました。統合しますか？`,
     noEvents: '該当するイベントはありません。',
     notFound: (kw) => `イベントが見つかりません：「${kw}」`,
     records: (n) => `${n} 件`,
@@ -1345,6 +1351,38 @@ function deleteEvent(id) {
   if (editingId === id) cancelEditEvent();
 }
 
+function getDuplicateEventsByName(name) {
+  const exactName = (name || '').trim();
+  if (!exactName) return [];
+  return eventData.filter((ev) => (ev.name || '').trim() === exactName);
+}
+
+function mergeActivities(target, duplicates, incoming) {
+  const unique = (items) => [...new Set(items.filter(Boolean).map((item) => item.trim()).filter(Boolean))];
+
+  const mergedLocations = unique([target.location, ...duplicates.map((ev) => ev.location), incoming.location]);
+  const mergedKeywords = unique([target.keyword, ...duplicates.map((ev) => ev.keyword), incoming.keyword]);
+  const mergedCoArtists = unique([target.coArtists, ...duplicates.map((ev) => ev.coArtists), incoming.coArtists]);
+
+  const mergedStarts = [target.start, ...duplicates.map((ev) => ev.start), incoming.start]
+    .map((value) => ({ raw: value, ts: new Date(value).getTime() }))
+    .filter((item) => Number.isFinite(item.ts))
+    .sort((a, b) => a.ts - b.ts);
+
+  target.name = incoming.name;
+  target.location = mergedLocations.join(' / ');
+  target.keyword = mergedKeywords.join(' ');
+  target.coArtists = mergedCoArtists.join(' / ');
+  if (mergedStarts.length) target.start = mergedStarts[0].raw;
+
+  const duplicateIds = new Set(duplicates.map((ev) => ev.id));
+  for (let i = eventData.length - 1; i >= 0; i -= 1) {
+    if (duplicateIds.has(eventData[i].id)) {
+      eventData.splice(i, 1);
+    }
+  }
+}
+
 adminCancelBtn.addEventListener('click', cancelEditEvent);
 
 if (exportEventsBtn) {
@@ -1383,12 +1421,29 @@ adminForm.addEventListener('submit', (e) => {
     cancelEditEvent();
     alert(t('adminUpdated'));
   } else {
-    eventData.push({ id: Date.now(), name, location, start, keyword, coArtists });
-    adminForm.reset();
-    alert(t('adminAdded'));
-    // 新增活動後自動跳轉到該活動所在的月份
-    const newEventMonth = getYearMonthValueFromStart(start);
-    monthPicker.value = newEventMonth;
+    const sameNameEvents = getDuplicateEventsByName(name);
+    if (sameNameEvents.length > 0) {
+      const shouldMerge = confirm(t('adminConfirmMerge', name));
+      if (shouldMerge) {
+        const [target, ...rest] = sameNameEvents;
+        mergeActivities(target, rest, { name, location, start, keyword, coArtists });
+        adminForm.reset();
+        alert(t('adminMerged'));
+        monthPicker.value = getYearMonthValueFromStart(target.start);
+      } else {
+        eventData.push({ id: Date.now(), name, location, start, keyword, coArtists });
+        adminForm.reset();
+        alert(t('adminAdded'));
+        monthPicker.value = getYearMonthValueFromStart(start);
+      }
+    } else {
+      eventData.push({ id: Date.now(), name, location, start, keyword, coArtists });
+      adminForm.reset();
+      alert(t('adminAdded'));
+      // 新增活動後自動跳轉到該活動所在的月份
+      const newEventMonth = getYearMonthValueFromStart(start);
+      monthPicker.value = newEventMonth;
+    }
   }
 
   saveEventData();
