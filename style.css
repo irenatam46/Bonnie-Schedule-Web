@@ -559,6 +559,33 @@ body.drawer-open {
   background: #fff;
 }
 .admin-panel h2 { margin-top:0; }
+.admin-expired-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.admin-expired-count {
+  color: #7a4a86;
+  font-size: 0.82rem;
+}
+.admin-expired-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid #bc7fd4;
+  border-radius: 999px;
+  background: #f3e4fb;
+  color: #5a1675;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.admin-expired-link:hover {
+  background: #ead6f7;
+}
 .admin-event-row {
   display: flex;
   align-items: center;

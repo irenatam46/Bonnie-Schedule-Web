@@ -21,6 +21,11 @@ const LANGS = {
     adminCancel: '取消編輯',
     adminDeleteCurrent: '刪除活動',
     adminExisting: '現有活動',
+    adminExpired: '過期活動',
+    adminExpiredEmpty: '目前沒有過期活動。',
+    adminOpenExpiredPage: '前往過期活動頁',
+    adminBackToCurrent: '返回現有活動頁',
+    adminExpiredCount: (n) => `過期活動：${n} 筆`,
     adminEmpty: '目前沒有活動。',
     adminEdit: '編輯',
     adminDelete: '刪除',
@@ -71,6 +76,11 @@ const LANGS = {
     adminCancel: 'Cancel Edit',
     adminDeleteCurrent: 'Delete Event',
     adminExisting: 'Existing Events',
+    adminExpired: 'Expired Events',
+    adminExpiredEmpty: 'No expired events.',
+    adminOpenExpiredPage: 'Open Expired Events Page',
+    adminBackToCurrent: 'Back to Existing Events',
+    adminExpiredCount: (n) => `Expired events: ${n}`,
     adminEmpty: 'No events yet.',
     adminEdit: 'Edit',
     adminDelete: 'Delete',
@@ -121,6 +131,11 @@ const LANGS = {
     adminCancel: '編集をキャンセル',
     adminDeleteCurrent: 'イベントを削除',
     adminExisting: '既存のイベント',
+    adminExpired: '期限切れイベント',
+    adminExpiredEmpty: '期限切れイベントはありません。',
+    adminOpenExpiredPage: '期限切れイベントページへ',
+    adminBackToCurrent: '既存イベントページへ戻る',
+    adminExpiredCount: (n) => `期限切れイベント：${n} 件`,
     adminEmpty: 'イベントはありません。',
     adminEdit: '編集',
     adminDelete: '削除',
@@ -1211,6 +1226,22 @@ const supabaseUrlInput = document.getElementById('supabaseUrlInput');
 const supabaseKeyInput = document.getElementById('supabaseKeyInput');
 const saveSyncConfigBtn = document.getElementById('saveSyncConfigBtn');
 const clearSyncConfigBtn = document.getElementById('clearSyncConfigBtn');
+const adminListTitle = document.getElementById('adminListTitle');
+const adminExpiredNav = document.getElementById('adminExpiredNav');
+
+function isExpiredAdminView() {
+  return new URLSearchParams(window.location.search).get('adminView') === 'expired';
+}
+
+function getAdminViewUrl(view) {
+  const url = new URL(window.location.href);
+  if (view === 'expired') {
+    url.searchParams.set('adminView', 'expired');
+  } else {
+    url.searchParams.delete('adminView');
+  }
+  return `${url.pathname}${url.search}`;
+}
 
 function getDefaultSyncDataset() {
   return 'bonnie-schedule-main';
@@ -1278,14 +1309,34 @@ function renderAdminEventList() {
   if (!list) return;
   list.innerHTML = '';
 
-  if (!eventData.length) {
-    list.innerHTML = `<p style="color:#888;font-size:0.9rem;">${t('adminEmpty')}</p>`;
+  const sorted = [...eventData].sort((a, b) => new Date(a.start) - new Date(b.start));
+  const expiredEvents = sorted.filter((ev) => isEventExpired(ev.start));
+  const activeEvents = sorted.filter((ev) => !isEventExpired(ev.start));
+  const expiredView = isExpiredAdminView();
+  const visibleEvents = expiredView ? expiredEvents : activeEvents;
+  const disabledAttr = canEditAdminData() ? '' : 'disabled';
+
+  if (adminListTitle) {
+    adminListTitle.textContent = expiredView ? t('adminExpired') : t('adminExisting');
+  }
+
+  if (adminExpiredNav) {
+    if (expiredView) {
+      adminExpiredNav.innerHTML = `<a class="admin-expired-link" href="${getAdminViewUrl('default')}">${t('adminBackToCurrent')}</a>`;
+    } else {
+      adminExpiredNav.innerHTML = `
+        <span class="admin-expired-count">${t('adminExpiredCount', expiredEvents.length)}</span>
+        <a class="admin-expired-link" href="${getAdminViewUrl('expired')}">${t('adminOpenExpiredPage')}</a>
+      `;
+    }
+  }
+
+  if (!visibleEvents.length) {
+    list.innerHTML = `<p style="color:#888;font-size:0.9rem;">${expiredView ? t('adminExpiredEmpty') : t('adminEmpty')}</p>`;
     return;
   }
 
-  const sorted = [...eventData].sort((a, b) => new Date(a.start) - new Date(b.start));
-  const disabledAttr = canEditAdminData() ? '' : 'disabled';
-  sorted.forEach((ev) => {
+  visibleEvents.forEach((ev) => {
     const row = document.createElement('div');
     row.className = 'admin-event-row';
     row.innerHTML = `
