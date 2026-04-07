@@ -290,6 +290,8 @@ body {
   margin: 6px 0 2px;
   font-size: 0.95rem;
   color: #5a0d6e;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .event-coartists-icon {
   font-style: normal;
