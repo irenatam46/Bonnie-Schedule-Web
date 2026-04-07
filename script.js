@@ -1395,7 +1395,7 @@ function startEditEvent(id) {
   if (!ev) return;
   editingId = id;
   document.getElementById('newName').value = ev.name;
-  document.getElementById('newLocation').value = ev.location;
+  document.getElementById('newLocation').value = ev.location || '';
   document.getElementById('newStart').value = ev.start;
   document.getElementById('newKeyword').value = ev.keyword || '';
   document.getElementById('newCoArtists').value = ev.coArtists || '';
@@ -1493,7 +1493,7 @@ adminForm.addEventListener('submit', (e) => {
   const start = document.getElementById('newStart').value;
   const keyword = document.getElementById('newKeyword').value.trim();
 
-  if (!name || !location || !start) return;
+  if (!name || !start) return;
 
   const coArtists = document.getElementById('newCoArtists').value.trim();
 
