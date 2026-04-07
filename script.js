@@ -873,7 +873,7 @@ function buildEventCard(event) {
     </div>
     <div class="event-content">
       <h3>${event.name}</h3>
-      <p><strong>${t('fieldVenue')}</strong>${translatedLocation}</p>
+      ${translatedLocation ? `<p><strong>${t('fieldVenue')}</strong>${translatedLocation}</p>` : ''}
       <p><strong>${t('fieldStart')}</strong>${formatStart(event.start)}</p>
       ${event.coArtists ? `<p class="event-coartists"><span class="event-coartists-icon">🎤</span><strong>${t('fieldCoArtistsLabel')}</strong>${event.coArtists}</p>` : ''}
       ${event.keyword ? `<p class="event-keyword"><strong>${t('fieldKeyword')}</strong><a class="event-keyword-link" href="${buildXPostUrl(event.keyword)}" target="_blank" rel="noopener noreferrer">${event.keyword}</a></p>` : ''}

@@ -722,8 +722,15 @@ body.drawer-open {
     padding: 8px 10px 6px;
   }
   
+  .event-content {
+    width: 100%;
+    min-width: 0;
+  }
+  
   .event-card h3 {
     font-size: 1rem;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   
   .event-card p {
@@ -882,6 +889,8 @@ body.drawer-open {
   .event-card h3 {
     font-size: 0.95rem;
     margin: 0 0 4px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   
   .event-card p {
@@ -1037,6 +1046,8 @@ body.drawer-open {
   
   .event-card h3 {
     font-size: 0.9rem;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   
   .event-card p {
